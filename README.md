@@ -5,7 +5,6 @@ A .NET 9 Web API demonstrating AI integration with OpenRouter, featuring a Chat 
 ## Features
 
 - **Chat API** – POST to `/chat` to interact with OpenRouter AI models.
-- **Weather Forecast** – Standard weather forecast endpoint at `/weatherforecast`.
 - **Secret Scanning** – Gitleaks GitHub Action runs on every push and PR to `main`.
 - **Clean Architecture** – Separation of concerns with service interfaces and implementations.
 
@@ -14,8 +13,7 @@ A .NET 9 Web API demonstrating AI integration with OpenRouter, featuring a Chat 
 ```
 MyFirstAIApp/
 ├── Controllers/
-│   ├── ChatController.cs
-│   └── WeatherForecastController.cs
+│   └── ChatController.cs
 ├── Services/
 │   ├── IOpenRouterService.cs
 │   ├── OpenRouterService.cs
@@ -64,6 +62,14 @@ This repo uses **Gitleaks** to detect secrets in code. The workflow (`.github/wo
 To run Gitleaks locally:
 ```bash
 gitleaks detect --source . --verbose
+```
+
+## Testing Gitleaks
+
+To validate the Gitleaks workflow, a fake AWS access key is intentionally included below. Pushing this branch will trigger the scan and flag the secret.
+
+```
+AKIAIOSFODNN7EXAMPLE
 ```
 
 ## Contributing
