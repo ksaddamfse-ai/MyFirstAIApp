@@ -1,0 +1,6 @@
+@MyFirstAIApp_HostAddress = http://localhost:5184
+
+GET {{MyFirstAIApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
