@@ -24,6 +24,12 @@ builder.Services.Configure<OpenRouterOptions>(builder.Configuration.GetSection("
 builder.Services.Configure<OpenRouterOptions>(builder.Configuration.GetSection("OpenRouter"));
 builder.Services.AddHttpClient<IOpenRouterService, OpenRouterService>();
 
+// NVIDIA NIM configuration
+builder.Services.Configure<NvidiaNimOptions>(builder.Configuration.GetSection("NvidiaNim"));
+
+// NVIDIA NIM setup
+builder.Services.AddHttpClient<INvidiaNimService, NvidiaNimService>();
+
 var app = builder.Build();
 
 // Get a logger instance for program-level logs
