@@ -19,17 +19,6 @@ public class BenchmarkService : IBenchmarkService
         _logger = logger;
     }
 
-    private string ResolveModelId(ChatClientMetadata? metadata, string key)
-    {
-        if (metadata is not null)
-        {
-            var prop = metadata.GetType().GetProperty("ModelId") ?? metadata.GetType().GetProperty("ModelName");
-            if (prop?.GetValue(metadata) is string modelId && !string.IsNullOrEmpty(modelId))
-                return modelId;
-        }
-        return _options.ProviderModels.TryGetValue(key, out var configModel) ? configModel : "unknown";
-    }
-
     public List<ProviderInfo> GetAvailableProviders()
     {
         var keys = _options.ProviderKeys.Count > 0 ? [.. _options.ProviderKeys] : AllProviderKeys;
@@ -47,24 +36,24 @@ public class BenchmarkService : IBenchmarkService
             {
                 Key = key,
                 ProviderName = metadata?.ProviderName ?? key,
-                ModelId = ResolveModelId(metadata, key)
+                ModelId = _options.ProviderModels.TryGetValue(key, out var m) ? m : "unknown"
             });
         }
 
         return providers;
     }
 
-    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? providerKeys)
+    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? providerKeys, CancellationToken cancellationToken = default)
     {
         var keys = providerKeys is { Length: > 0 } ? providerKeys
             : _options.ProviderKeys.Count > 0 ? [.. _options.ProviderKeys] : AllProviderKeys;
 
-        var tasks = keys.Select(key => RunSingleAsync(key, question));
+        var tasks = keys.Select(key => RunSingleAsync(key, question, cancellationToken));
         var entries = await Task.WhenAll(tasks);
         return [.. entries.OfType<BenchmarkEntry>()];
     }
 
-    private async Task<BenchmarkEntry?> RunSingleAsync(string key, string question)
+    private async Task<BenchmarkEntry?> RunSingleAsync(string key, string question, CancellationToken cancellationToken)
     {
         var client = _serviceProvider.GetKeyedService<IChatClient>(key);
         if (client is null)
@@ -74,12 +63,12 @@ public class BenchmarkService : IBenchmarkService
         }
 
         var metadata = client.GetService(typeof(ChatClientMetadata)) as ChatClientMetadata;
-        var modelId = ResolveModelId(metadata, key);
+        var modelId = _options.ProviderModels.TryGetValue(key, out var m) ? m : "unknown";
         var sw = Stopwatch.StartNew();
 
         try
         {
-            var response = await client.GetResponseAsync(question);
+            var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
             sw.Stop();
 
             _logger.LogInformation("Benchmark {Key} OK ({Ms}ms)", key, sw.ElapsedMilliseconds);

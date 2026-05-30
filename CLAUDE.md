@@ -18,9 +18,9 @@ No tests exist. If adding tests, place them in a `Tests/` folder at repo root wi
 ## Project Structure
 
 ```
-Controllers/        # API endpoints (ChatController.cs)
-Services/           # IMyAiService / MyAiService (wraps IChatClient)
-Clients/            # Custom IChatClient implementations (OpenRouterAPIClient.cs)
+Controllers/        # API endpoints (ChatController.cs, BenchmarkController.cs)
+Services/           # IBenchmarkService / BenchmarkService
+Models/             # BenchmarkEntry, ProviderInfo, BenchmarkOptions
 Program.cs          # DI registration of AI providers and pipeline
 OpenRouterOptions.cs
 NvidiaNimOptions.cs
@@ -39,8 +39,9 @@ All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 ## API Endpoints
 
-- `POST /api/chat?question=...` — calls `IMyAiService` (OpenRouterOpenAI)
-- `POST /api/chat/myai?question=...` — same service
+- `POST /api/chat?question=...` — calls `IChatClient` (OpenRouterOpenAI)
+- `GET  /api/benchmark/providers` — list available providers
+- `POST /api/benchmark?question=...&providers=...` — benchmark providers
 
 ## Config
 
@@ -61,7 +62,7 @@ Edit `appsettings.json`:
 - Nullable reference types enabled
 - No comments on code unless explaining *why* not *what*
 - Async all the way: suffix async methods with `Async`
-- All services via interfaces (e.g. `IMyAiService` / `MyAiService`)
+- All services via interfaces (e.g. `IBenchmarkService` / `BenchmarkService`)
 - Prefer primary constructors where appropriate
 - Use `Microsoft.Extensions.AI.IChatClient` for AI provider abstraction
 - Register providers as keyed services via `AddKeyedChatClient`
