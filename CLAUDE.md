@@ -32,7 +32,6 @@ appsettings.json    # API keys (placeholder: "API-KEY")
 | Keyed Service Name     | Provider      | How                        |
 |------------------------|---------------|----------------------------|
 | `OpenRouterOpenAI`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
-| `OpenRouterCustom`     | OpenRouter    | Custom `OpenRouterAPIClient` |
 | `Ollama`               | Ollama        | `OllamaChatClient`          |
 | `NvidiaNimOpenAI`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
 
@@ -49,7 +48,7 @@ Edit `appsettings.json`:
 ```json
 "OpenRouter": { "ApiKey": "your-key", "ModelName": "openrouter/free" }
 "Ollama":     { "BaseUrl": "http://localhost:11434", "ModelName": "llama3" }
-"NvidiaNim":  { "ApiKey": "your-key", "ModelName": "meta/llama-3.1-405b-instruct" }
+"NvidiaNim":  { "ApiKey": "your-key", "ModelName": "meta/llama-3.3-70b-instruct" }
 ```
 
 **Never commit real API keys.** Gitleaks runs on push/PR to `main`.

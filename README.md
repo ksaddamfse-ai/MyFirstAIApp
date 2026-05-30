@@ -1,76 +1,72 @@
 # MyFirstAIApp
 
-A .NET 9 Web API demonstrating AI integration with OpenRouter, featuring a Chat endpoint and secret scanning via Gitleaks.
+.NET 10 Web API integrating OpenRouter, Ollama, and Nvidia NIM via `Microsoft.Extensions.AI`.
 
 ## Features
 
-- **Chat API** – POST to `/chat` to interact with OpenRouter AI models.
-- **Weather Forecast** – Standard weather forecast endpoint at `/weatherforecast`.
-- **Secret Scanning** – Gitleaks GitHub Action runs on every push and PR to `main`.
-- **Clean Architecture** – Separation of concerns with service interfaces and implementations.
-
-## Project Structure
-
-```
-MyFirstAIApp/
-├── Controllers/
-│   ├── ChatController.cs
-│   └── WeatherForecastController.cs
-├── Services/
-│   ├── IOpenRouterService.cs
-│   ├── OpenRouterService.cs
-│   ├── IOllamaService.cs
-│   └── OllamaService.cs
-├── OpenRouterOptions.cs
-├── Program.cs
-├── appsettings.json
-└── Properties/
-    └── launchSettings.json
-```
+- **Chat API** – POST to `/api/chat` to interact with AI models
+- **Benchmark API** – Compare response times across providers
+- **Multi-Provider** – OpenRouter, Ollama, Nvidia NIM via `IChatClient`
+- **Secret Scanning** – Gitleaks GitHub Action on push/PR to `main`
 
 ## Getting Started
 
 1. **Prerequisites**
-   - .NET 9 SDK
-   - Valid OpenRouter API key
+   - .NET 10 SDK
+   - API keys for OpenRouter and/or Nvidia NIM (optional)
+   - Ollama running locally (optional)
 
 2. **Configure**
-   Replace `"REDACTED"` in `appsettings.json` with your actual OpenRouter API key:
+   Edit `appsettings.json`:
    ```json
-   "OpenRouter": {
-     "ApiKey": "your-api-key-here"
-   }
+   "OpenRouter": { "ApiKey": "your-key", "ModelName": "openrouter/free" }
+   "Ollama":     { "BaseUrl": "http://localhost:11434", "ModelName": "llama3" }
+   "NvidiaNim":  { "ApiKey": "nvapi-your-key", "ModelName": "meta/llama-3.3-70b-instruct" }
    ```
 
 3. **Run**
    ```bash
    dotnet run
    ```
-   App starts at `https://localhost:5001` and `http://localhost:5000`.
+   App starts at `https://localhost:7164` and `http://localhost:5184`. Swagger at `/swagger`.
 
-4. **Test Chat Endpoint**
-   ```bash
-   curl -X POST https://localhost:5001/chat \
-     -H "Content-Type: application/json" \
-     -d '{"prompt": "Hello!"}'
-   ```
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/chat?question=...` | Chat with AI |
+| `POST` | `/api/chat/myai?question=...` | Chat with AI (alternate) |
+| `GET`  | `/api/chat/benchmark/providers` | List available providers |
+| `POST` | `/api/chat/benchmark?question=...&providers=...` | Run benchmark |
+
+## Project Structure
+
+```
+Controllers/        # API endpoints (ChatController.cs)
+Services/           # IMyAiService / MyAiService (wraps IChatClient)
+                    # IBenchmarkService / BenchmarkService
+Clients/            # Custom IChatClient implementations (OpenRouterAPIClient.cs)
+Models/             # BenchmarkEntry, BenchmarkResult, ProviderInfo, BenchmarkOptions
+Program.cs          # DI registration of AI providers
+appsettings.json    # API keys (placeholder: "API-KEY")
+```
+
+## AI Providers
+
+| Keyed Service | Provider | Implementation |
+|---------------|----------|----------------|
+| `OpenRouterOpenAI` | OpenRouter | `OpenAIClient` SDK |
+| `Ollama` | Ollama | `OllamaChatClient` |
+| `NvidiaNimOpenAI` | Nvidia NIM | `OpenAIClient` SDK |
 
 ## Secret Scanning
 
-This repo uses **Gitleaks** to detect secrets in code. The workflow (`.github/workflows/gitleaks.yml`) runs automatically on:
-- Pushes to `main`
-- Pull requests targeting `main`
+Gitleaks runs on pushes to `main` and PRs targeting `main`.
 
-To run Gitleaks locally:
+Run locally:
 ```bash
 gitleaks detect --source . --verbose
 ```
-
-## Contributing
-
-1. Create a feature branch from `main`.
-2. Make changes and ensure no secrets are committed.
-3. Open a pull request – Gitleaks will scan automatically.
 
 ## License
 
