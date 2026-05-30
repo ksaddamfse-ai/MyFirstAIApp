@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MyFirstAIApp.Services;
 
-namespace MyFirstAIApp;
+namespace MyFirstAIApp.Controllers;
 
 [ApiController]
 [Route("api/benchmark")]
