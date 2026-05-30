@@ -35,20 +35,18 @@
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/chat?question=...` | Chat with AI |
-| `POST` | `/api/chat/myai?question=...` | Chat with AI (alternate) |
-| `GET`  | `/api/chat/benchmark/providers` | List available providers |
-| `POST` | `/api/chat/benchmark?question=...&providers=...` | Run benchmark |
+| `GET`  | `/api/benchmark/providers` | List available providers |
+| `POST` | `/api/benchmark?question=...&providers=...` | Benchmark providers |
 
 ## Project Structure
 
 ```
-Controllers/        # API endpoints (ChatController.cs)
-Services/           # IMyAiService / MyAiService (wraps IChatClient)
-                    # IBenchmarkService / BenchmarkService
-Clients/            # Custom IChatClient implementations (OpenRouterAPIClient.cs)
-Models/             # BenchmarkEntry, BenchmarkResult, ProviderInfo, BenchmarkOptions
-Program.cs          # DI registration of AI providers
-appsettings.json    # API keys (placeholder: "API-KEY")
+Controllers/        # API endpoints (ChatController.cs, BenchmarkController.cs)
+Filters/            # Swagger parameter filters (ProviderDropdownFilter.cs)
+Services/           # IBenchmarkService / BenchmarkService
+Models/             # BenchmarkEntry, ProviderInfo, BenchmarkOptions
+Program.cs          # DI registration and pipeline
+appsettings.json    # API keys (placeholders: "API-KEY", "nvapi-your-key")
 ```
 
 ## AI Providers
