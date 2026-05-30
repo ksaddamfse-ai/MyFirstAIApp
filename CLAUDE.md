@@ -31,15 +31,15 @@ appsettings.json    # API keys (placeholder: "API-KEY")
 
 | Keyed Service Name     | Provider      | How                        |
 |------------------------|---------------|----------------------------|
-| `OpenRouterOpenAI`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
+| `OpenRouter`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
 | `Ollama`               | Ollama        | `OllamaChatClient`          |
-| `NvidiaNimOpenAI`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
+| `NvidiaNim`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
 
 All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 ## API Endpoints
 
-- `POST /api/chat?question=...` — calls `IChatClient` (OpenRouterOpenAI)
+- `POST /api/chat?question=...` — calls `IChatClient` (OpenRouter)
 - `GET  /api/benchmark/providers` — list available providers
 - `POST /api/benchmark?question=...&providers=...` — benchmark providers
 

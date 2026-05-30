@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using MyFirstAIApp;
+using MyFirstAIApp.Models;
 using MyFirstAIApp.Services;
 using OpenAI;
 using System.ClientModel;
@@ -10,26 +11,32 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c => c.ParameterFilter<ProviderDropdownFilter>());
 
-// OpenRouter
-var openRouter = new OpenAIClient(
-    new ApiKeyCredential(builder.Configuration["OpenRouter:ApiKey"]!),
-    new OpenAIClientOptions { Endpoint = new Uri(builder.Configuration["OpenRouter:BaseUrl"]!) });
-builder.Services.AddKeyedChatClient("OpenRouterOpenAI",
-    openRouter.AsChatClient(builder.Configuration["OpenRouter:ModelName"]!));
+// Config-driven provider registration
+foreach (var section in builder.Configuration.GetSection("ProviderRegistry").GetChildren())
+{
+    var key = section.Key;
+    var type = section["Type"];
+    var modelName = section["ModelName"]!;
 
-// Ollama
-builder.Services.AddKeyedChatClient("Ollama",
-    new OllamaChatClient(
-        builder.Configuration["Ollama:BaseUrl"]!,
-        builder.Configuration["Ollama:ModelName"]));
+    if (type == "Ollama")
+    {
+        builder.Services.AddKeyedChatClient(key,
+            new OllamaChatClient(section["BaseUrl"]!, modelName));
+    }
+    else
+    {
+        var apiKey = section["ApiKey"];
+        if (string.IsNullOrEmpty(apiKey)) continue;
 
-// Nvidia NIM
-var nvidiaNim = new OpenAIClient(
-    new ApiKeyCredential(builder.Configuration["NvidiaNim:ApiKey"]!),
-    new OpenAIClientOptions { Endpoint = new Uri(builder.Configuration["NvidiaNim:BaseUrl"]!) });
-builder.Services.AddKeyedChatClient("NvidiaNimOpenAI",
-    nvidiaNim.AsChatClient(builder.Configuration["NvidiaNim:ModelName"]!));
+        var client = new OpenAIClient(
+            new ApiKeyCredential(apiKey),
+            new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) });
+        builder.Services.AddKeyedChatClient(key, client.AsChatClient(modelName));
+    }
+}
 
+builder.Services.Configure<Dictionary<string, ProviderRegistryEntry>>(
+    builder.Configuration.GetSection("ProviderRegistry"));
 builder.Services.AddTransient<IBenchmarkService, BenchmarkService>();
 
 var app = builder.Build();

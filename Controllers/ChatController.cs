@@ -1,22 +1,29 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
+using MyFirstAIApp.Models;
 
 namespace MyFirstAIApp;
 
 [ApiController]
 [Route("api/chat")]
-public class ChatController(ILogger<ChatController> logger) : ControllerBase
+public class ChatController(
+    ILogger<ChatController> logger,
+    IOptions<Dictionary<string, ProviderRegistryEntry>> registry) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Ask(
         [FromQuery] string question,
-        [FromQuery] string provider = "OpenRouterOpenAI",
+        [FromQuery] string provider = "OpenRouter",
         CancellationToken cancellationToken = default)
     {
+        if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
+            return StatusCode(403, $"Provider '{provider}' is disabled");
+
         var client = HttpContext.RequestServices.GetKeyedService<IChatClient>(provider);
         if (client is null)
             return BadRequest($"Provider '{provider}' not found.");
-        
+
         logger.LogInformation("Chat request ({Provider}): {Question}", provider, question);
         var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
         return Ok(response?.Text);

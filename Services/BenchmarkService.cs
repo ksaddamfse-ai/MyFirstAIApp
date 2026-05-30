@@ -8,35 +8,35 @@ namespace MyFirstAIApp.Services;
 public class BenchmarkService : IBenchmarkService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly BenchmarkOptions _options;
+    private readonly Dictionary<string, ProviderRegistryEntry> _registry;
     private readonly ILogger<BenchmarkService> _logger;
-    private static readonly string[] AllProviderKeys = ["OpenRouterOpenAI", "Ollama", "NvidiaNimOpenAI"];
 
-    public BenchmarkService(IServiceProvider serviceProvider, IOptions<BenchmarkOptions> options, ILogger<BenchmarkService> logger)
+    public BenchmarkService(
+        IServiceProvider serviceProvider,
+        IOptions<Dictionary<string, ProviderRegistryEntry>> registry,
+        ILogger<BenchmarkService> logger)
     {
         _serviceProvider = serviceProvider;
-        _options = options.Value;
+        _registry = registry.Value;
         _logger = logger;
     }
 
     public List<ProviderInfo> GetAvailableProviders()
     {
-        var keys = _options.ProviderKeys.Count > 0 ? [.. _options.ProviderKeys] : AllProviderKeys;
-
         var providers = new List<ProviderInfo>();
 
-        foreach (var key in keys)
+        foreach (var (key, entry) in _registry)
         {
-            var client = _serviceProvider.GetKeyedService<IChatClient>(key);
-            if (client is null)
-                continue;
+            if (!entry.Enabled) continue;
 
-            var metadata = client.GetService(typeof(ChatClientMetadata)) as ChatClientMetadata;
+            var client = _serviceProvider.GetKeyedService<IChatClient>(key);
+            if (client is null) continue;
+
             providers.Add(new ProviderInfo
             {
                 Key = key,
-                ProviderName = metadata?.ProviderName ?? key,
-                ModelId = _options.ProviderModels.TryGetValue(key, out var m) ? m : "unknown"
+                ProviderName = key,
+                ModelId = entry.ModelName
             });
         }
 
@@ -45,8 +45,11 @@ public class BenchmarkService : IBenchmarkService
 
     public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? providerKeys, CancellationToken cancellationToken = default)
     {
-        var keys = providerKeys is { Length: > 0 } ? providerKeys
-            : _options.ProviderKeys.Count > 0 ? [.. _options.ProviderKeys] : AllProviderKeys;
+        IEnumerable<string> keys;
+        if (providerKeys is { Length: > 0 })
+            keys = providerKeys;
+        else
+            keys = _registry.Where(e => e.Value.Enabled).Select(e => e.Key);
 
         var tasks = keys.Select(key => RunSingleAsync(key, question, cancellationToken));
         var entries = await Task.WhenAll(tasks);
@@ -62,8 +65,7 @@ public class BenchmarkService : IBenchmarkService
             return null;
         }
 
-        var metadata = client.GetService(typeof(ChatClientMetadata)) as ChatClientMetadata;
-        var modelId = _options.ProviderModels.TryGetValue(key, out var m) ? m : "unknown";
+        var modelId = _registry.TryGetValue(key, out var entry) ? entry.ModelName : "unknown";
         var sw = Stopwatch.StartNew();
 
         try
@@ -76,7 +78,7 @@ public class BenchmarkService : IBenchmarkService
             return new BenchmarkEntry
             {
                 Provider = key,
-                ProviderName = metadata?.ProviderName ?? key,
+                ProviderName = key,
                 Model = modelId,
                 Success = true,
                 Response = response?.Text,
@@ -92,7 +94,7 @@ public class BenchmarkService : IBenchmarkService
             return new BenchmarkEntry
             {
                 Provider = key,
-                ProviderName = metadata?.ProviderName ?? key,
+                ProviderName = key,
                 Model = modelId,
                 Success = false,
                 LatencyMs = sw.ElapsedMilliseconds,
