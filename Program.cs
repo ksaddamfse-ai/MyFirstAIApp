@@ -15,7 +15,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Information);
 // Services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c => c.ParameterFilter<ProviderDropdownFilter>());
 builder.Services.AddDistributedMemoryCache();
 
 // AI Provider Integration

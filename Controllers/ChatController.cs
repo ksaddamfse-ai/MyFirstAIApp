@@ -5,14 +5,20 @@ namespace MyFirstAIApp;
 
 [ApiController]
 [Route("api/chat")]
-public class ChatController(ILogger<ChatController> logger, [FromKeyedServices("OpenRouterOpenAI")] IChatClient chatClient) : ControllerBase
+public class ChatController(ILogger<ChatController> logger) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Ask([FromQuery] string question, CancellationToken cancellationToken)
+    public async Task<IActionResult> Ask(
+        [FromQuery] string question,
+        [FromQuery] string provider = "OpenRouterOpenAI",
+        CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Received chat request: {Question}", question);
-        var response = await chatClient.GetResponseAsync(question, cancellationToken: cancellationToken);
-        logger.LogInformation("Returning answer (length {Length})", response?.Text?.Length ?? 0);
+        var client = HttpContext.RequestServices.GetKeyedService<IChatClient>(provider);
+        if (client is null)
+            return BadRequest($"Provider '{provider}' not found.");
+        
+        logger.LogInformation("Chat request ({Provider}): {Question}", provider, question);
+        var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
         return Ok(response?.Text);
     }
 }
