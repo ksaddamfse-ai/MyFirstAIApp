@@ -1,9 +1,22 @@
 # MyFirstAIApp
 
-.NET 10 Web API showcasing `Microsoft.Extensions.AI.IChatClient` with multi-provider support.
-Config-driven provider registration — add a provider by dropping a JSON block, zero code changes.
+[![build](https://github.com/ksaddamfse-ai/MyFirstAIApp/actions/workflows/ci.yml/badge.svg)](https://github.com/ksaddamfse-ai/MyFirstAIApp/actions/workflows/ci.yml)
+
+**Unified AI provider abstraction for .NET** — swap between OpenRouter, Ollama, and Nvidia NIM by changing a config value. Zero code changes. Built on `Microsoft.Extensions.AI.IChatClient`.
+
+```
+docker run -p 8080:8080 \
+  -e ProviderRegistry__OpenRouter__ApiKey=sk-... \
+  myfirstaiapp
+```
 
 Providers: **OpenRouter**, **Ollama** (development only), **Nvidia NIM**.
+
+## Why
+
+Every AI provider has a different SDK, auth scheme, and API shape. `Microsoft.Extensions.AI` (`IChatClient`) solves that with a common abstraction — but wiring up multiple providers still means repetitive `Program.cs` code.
+
+This project shows a **config-driven** approach: drop a JSON block in `appsettings.json`, and the provider is auto-registered in DI, auto-wired to the chat and benchmark endpoints, and auto-populated in the Swagger dropdown. Adding a new provider takes 10 seconds and zero C# changes.
 
 ## Features
 
@@ -14,14 +27,31 @@ Providers: **OpenRouter**, **Ollama** (development only), **Nvidia NIM**.
 - **Chat API** — `POST /api/chat` with dynamic provider selection
 - **Benchmark API** — compare latency across providers with `POST /api/benchmark`
 - **Secret scanning** — Gitleaks on push/PR to `main`
+- **Tests** — 17 xunit tests across services and controllers
 
 ## Getting Started
 
 ### Prerequisites
 
-- .NET 10 SDK
+- .NET 10 SDK or Docker
 - API key for OpenRouter and/or Nvidia NIM (optional — providers without a key are skipped)
 - [Ollama](https://ollama.ai) running locally (optional)
+
+### Run with Docker
+
+```bash
+docker build -t myfirstaiapp .
+docker run -p 8080:8080 \
+  -e ProviderRegistry__OpenRouter__ApiKey=sk-... \
+  -e ProviderRegistry__NvidiaNim__ApiKey=sk-... \
+  myfirstaiapp
+```
+
+### Run with .NET CLI
+
+```bash
+dotnet run
+```
 
 ### Configure
 
@@ -54,14 +84,6 @@ Providers: **OpenRouter**, **Ollama** (development only), **Nvidia NIM**.
 }
 ```
 
-### Run
-
-```bash
-dotnet run
-```
-
-App starts at `https://localhost:7164` and `http://localhost:5184`. Swagger at `/swagger`.
-
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -86,14 +108,16 @@ curl -X POST "http://localhost:5184/api/benchmark?question=Hello"
 ## Project Structure
 
 ```
-Controllers/        # ChatController.cs, BenchmarkController.cs
-Services/           # IBenchmarkService / BenchmarkService
-Models/             # ProviderInfo, BenchmarkEntry
-Settings/           # ProviderRegistryEntry
-Filters/            # ProviderDropdownFilter.cs (Swagger dropdown)
-Program.cs          # ~30 lines — registration loop + pipeline
-appsettings.json    # ProviderRegistry (remote providers)
-appsettings.Development.json  # ProviderRegistry (local-only providers)
+MyFirstAIApp/
+├── Controllers/        # ChatController, BenchmarkController
+├── Services/           # IBenchmarkService / BenchmarkService
+├── Models/             # ProviderInfo, BenchmarkEntry
+├── Settings/           # ProviderRegistryEntry (maps appsettings.json)
+├── Filters/            # ProviderDropdownFilter (Swagger)
+├── Tests/              # xunit + Moq (17 tests, 1:1 with production files)
+├── Program.cs          # ~30 lines — registration loop + pipeline
+├── Dockerfile          # Multi-stage build
+└── appsettings*.json   # ProviderRegistry config
 ```
 
 ## How to Add a Provider
@@ -148,3 +172,7 @@ Gitleaks runs on pushes to `main` and PRs targeting `main`.
 ```bash
 gitleaks detect --source . --verbose
 ```
+
+## License
+
+MIT
