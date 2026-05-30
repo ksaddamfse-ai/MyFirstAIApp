@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using MyFirstAIApp;
 using MyFirstAIApp.Settings;
 using MyFirstAIApp.Services;
@@ -6,6 +7,13 @@ using OpenAI;
 using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
+
+using var loggerFactory = LoggerFactory.Create(logging =>
+{
+    logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+    logging.AddConsole();
+});
+var logger = loggerFactory.CreateLogger("Program");
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -28,7 +36,7 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
         var apiKey = section["ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
-            Console.Error.WriteLine($"[WARNING] Skipping provider '{key}': no ApiKey configured");
+            logger.LogWarning("Skipping provider {Key}: no ApiKey configured", key);
             continue;
         }
 
@@ -41,6 +49,7 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
 
 builder.Services.Configure<Dictionary<string, ProviderRegistryEntry>>(
     builder.Configuration.GetSection("ProviderRegistry"));
+builder.Services.AddSingleton<IChatClientFactory, ChatClientFactory>();
 builder.Services.AddTransient<IBenchmarkService, BenchmarkService>();
 
 var app = builder.Build();

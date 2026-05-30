@@ -8,16 +8,16 @@ namespace MyFirstAIApp.Services;
 
 public class BenchmarkService : IBenchmarkService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IChatClientFactory _clientFactory;
     private readonly Dictionary<string, ProviderRegistryEntry> _registry;
     private readonly ILogger<BenchmarkService> _logger;
 
     public BenchmarkService(
-        IServiceProvider serviceProvider,
+        IChatClientFactory clientFactory,
         IOptions<Dictionary<string, ProviderRegistryEntry>> registry,
         ILogger<BenchmarkService> logger)
     {
-        _serviceProvider = serviceProvider;
+        _clientFactory = clientFactory;
         _registry = registry.Value;
         _logger = logger;
     }
@@ -30,7 +30,7 @@ public class BenchmarkService : IBenchmarkService
         {
             if (!entry.Enabled) continue;
 
-            var client = _serviceProvider.GetKeyedService<IChatClient>(key);
+            var client = _clientFactory.GetClient(key);
             if (client is null) continue;
 
             providers.Add(new ProviderInfo
@@ -58,7 +58,7 @@ public class BenchmarkService : IBenchmarkService
 
     private async Task<BenchmarkEntry> RunSingleAsync(string key, string question, CancellationToken cancellationToken)
     {
-        var client = _serviceProvider.GetKeyedService<IChatClient>(key);
+        var client = _clientFactory.GetClient(key);
         if (client is null)
         {
             _logger.LogWarning("Provider {Key} not registered, skipping", key);

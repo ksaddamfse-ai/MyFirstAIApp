@@ -1,11 +1,10 @@
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using MyFirstAIApp.Models;
-using MyFirstAIApp.Settings;
 using MyFirstAIApp.Services;
+using MyFirstAIApp.Settings;
 
 namespace MyFirstAIApp.Tests;
 
@@ -13,6 +12,7 @@ public class BenchmarkServiceTest
 {
     private readonly Mock<IChatClient> _openRouterClient = new();
     private readonly Mock<IChatClient> _ollamaClient = new();
+    private readonly Mock<IChatClientFactory> _factory = new();
 
     private Dictionary<string, ProviderRegistryEntry> CreateRegistry(bool ollamaEnabled = true)
     {
@@ -36,19 +36,18 @@ public class BenchmarkServiceTest
         };
     }
 
-    private IServiceProvider CreateServiceProvider()
+    private void SetupFactory()
     {
-        var services = new ServiceCollection();
-        services.AddKeyedSingleton<IChatClient>("OpenRouter", _openRouterClient.Object);
-        services.AddKeyedSingleton<IChatClient>("Ollama", _ollamaClient.Object);
-        return services.BuildServiceProvider();
+        _factory.Setup(f => f.GetClient("OpenRouter")).Returns(_openRouterClient.Object);
+        _factory.Setup(f => f.GetClient("Ollama")).Returns(_ollamaClient.Object);
     }
 
     private BenchmarkService CreateService(Dictionary<string, ProviderRegistryEntry>? registry = null)
     {
         registry ??= CreateRegistry();
+        SetupFactory();
         return new BenchmarkService(
-            CreateServiceProvider(),
+            _factory.Object,
             Options.Create(registry),
             NullLogger<BenchmarkService>.Instance);
     }
@@ -89,7 +88,12 @@ public class BenchmarkServiceTest
                 ModelName = "test"
             }
         };
-        var service = CreateService(registry);
+        var factory = new Mock<IChatClientFactory>();
+        var service = new BenchmarkService(
+            factory.Object,
+            Options.Create(registry),
+            NullLogger<BenchmarkService>.Instance);
+
         var result = service.GetAvailableProviders();
 
         Assert.Empty(result);
