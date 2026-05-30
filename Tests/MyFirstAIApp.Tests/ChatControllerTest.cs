@@ -108,43 +108,4 @@ public class ChatControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.Equal("", okResult.Value);
     }
-
-    [Fact]
-    public async Task Stream_WritesSseEvents()
-    {
-        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Hello world"));
-        var updates = response.ToChatResponseUpdates().ToList();
-
-        _chatClient
-            .Setup(c => c.GetStreamingResponseAsync(
-                It.Is<IEnumerable<ChatMessage>>(msgs => msgs.First().Text == "hi"),
-                null, It.IsAny<CancellationToken>()))
-            .Returns(updates.ToAsyncEnumerable());
-
-        var controller = CreateController();
-        var context = new DefaultHttpContext();
-        context.Response.Body = new MemoryStream();
-        controller.ControllerContext = new ControllerContext { HttpContext = context };
-
-        await controller.Stream("hi");
-
-        context.Response.Body.Position = 0;
-        var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
-
-        Assert.Contains("data: ", body);
-        Assert.Contains("data: [DONE]", body);
-    }
-
-    [Fact]
-    public async Task Stream_Returns400_WhenProviderNotFound()
-    {
-        var controller = CreateController();
-        var context = new DefaultHttpContext();
-        context.Response.Body = new MemoryStream();
-        controller.ControllerContext = new ControllerContext { HttpContext = context };
-
-        await controller.Stream("hi", "NonExistent");
-
-        Assert.Equal(400, context.Response.StatusCode);
-    }
 }

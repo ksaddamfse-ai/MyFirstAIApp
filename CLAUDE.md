@@ -72,6 +72,7 @@ Edit `appsettings.json`:
 - Prefer primary constructors where appropriate
 - Use `Microsoft.Extensions.AI.IChatClient` for AI provider abstraction
 - Register providers as keyed services via `AddKeyedChatClient`
+- Private methods go last in the file
 
 ## Karpathy Guidelines
 
