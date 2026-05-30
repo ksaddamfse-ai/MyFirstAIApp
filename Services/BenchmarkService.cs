@@ -10,7 +10,7 @@ public class BenchmarkService : IBenchmarkService
     private readonly IServiceProvider _serviceProvider;
     private readonly BenchmarkOptions _options;
     private readonly ILogger<BenchmarkService> _logger;
-    private static readonly string[] AllProviderKeys = ["OpenRouterOpenAI", "OpenRouterCustom", "Ollama", "NvidiaNimOpenAI"];
+    private static readonly string[] AllProviderKeys = ["OpenRouterOpenAI", "Ollama", "NvidiaNimOpenAI"];
 
     public BenchmarkService(IServiceProvider serviceProvider, IOptions<BenchmarkOptions> options, ILogger<BenchmarkService> logger)
     {

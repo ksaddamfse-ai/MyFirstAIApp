@@ -34,10 +34,10 @@ var openRouterClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey!),
 builder.Services.AddKeyedChatClient("OpenRouterOpenAI", openRouterClient.AsChatClient(openRouterModel!));
 
 // Custom OpenRouter client
-builder.Services.AddKeyedChatClient("OpenRouterCustom", serviceProvider =>
-    new OpenRouterAPIClient(
-        serviceProvider.GetRequiredService<IOptions<OpenRouterOptions>>(),
-        serviceProvider.GetRequiredService<ILogger<OpenRouterAPIClient>>()));
+//builder.Services.AddKeyedChatClient("OpenRouterCustom", serviceProvider =>
+//    new OpenRouterAPIClient(
+//        serviceProvider.GetRequiredService<IOptions<OpenRouterOptions>>(),
+//        serviceProvider.GetRequiredService<ILogger<OpenRouterAPIClient>>()));
 
 // Ollama
 builder.Services.AddKeyedChatClient("Ollama",

@@ -11,7 +11,7 @@ public class NvidiaNimOptions
     public string? ApiKey { get; set; }
 
     [DisplayName("NVIDIA NIM Model Name")]
-    public string? ModelName { get; set; } = "meta/llama-3.1-405b-instruct";
+    public string? ModelName { get; set; } = "meta/llama-3.3-70b-instruct";
 
     [DisplayName("Timeout in seconds")]
     public int Timeout { get; set; } = 60;
