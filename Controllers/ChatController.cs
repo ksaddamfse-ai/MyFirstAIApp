@@ -9,7 +9,8 @@ namespace MyFirstAIApp;
 [Route("api/chat")]
 public class ChatController(
     ILogger<ChatController> logger,
-    IOptions<Dictionary<string, ProviderRegistryEntry>> registry) : ControllerBase
+    IOptions<Dictionary<string, ProviderRegistryEntry>> registry,
+    IServiceProvider serviceProvider) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Ask(
@@ -20,7 +21,7 @@ public class ChatController(
         if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
             return StatusCode(403, $"Provider '{provider}' is disabled");
 
-        var client = HttpContext.RequestServices.GetKeyedService<IChatClient>(provider);
+        var client = serviceProvider.GetKeyedService<IChatClient>(provider);
         if (client is null)
             return BadRequest($"Provider '{provider}' not found.");
 
