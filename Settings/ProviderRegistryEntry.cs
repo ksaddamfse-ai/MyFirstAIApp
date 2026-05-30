@@ -1,4 +1,4 @@
-namespace MyFirstAIApp.Models;
+namespace MyFirstAIApp.Settings;
 
 public class ProviderRegistryEntry
 {
@@ -7,5 +7,4 @@ public class ProviderRegistryEntry
     public string? ApiKey { get; init; }
     public string BaseUrl { get; init; } = "";
     public string ModelName { get; init; } = "";
-    public int Timeout { get; init; } = 60;
 }

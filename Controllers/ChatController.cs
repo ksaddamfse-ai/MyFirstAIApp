@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
-using MyFirstAIApp.Models;
+using MyFirstAIApp.Settings;
 
 namespace MyFirstAIApp;
 
@@ -19,7 +19,7 @@ public class ChatController(
         CancellationToken cancellationToken = default)
     {
         if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
-            return StatusCode(403, $"Provider '{provider}' is disabled");
+            return BadRequest($"Provider '{provider}' is disabled");
 
         var client = serviceProvider.GetKeyedService<IChatClient>(provider);
         if (client is null)

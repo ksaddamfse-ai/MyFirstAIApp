@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 using MyFirstAIApp;
-using MyFirstAIApp.Models;
+using MyFirstAIApp.Settings;
 using MyFirstAIApp.Services;
 using OpenAI;
 using System.ClientModel;
@@ -26,7 +26,11 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
     else
     {
         var apiKey = section["ApiKey"];
-        if (string.IsNullOrEmpty(apiKey)) continue;
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            Console.Error.WriteLine($"[WARNING] Skipping provider '{key}': no ApiKey configured");
+            continue;
+        }
 
         var client = new OpenAIClient(
             new ApiKeyCredential(apiKey),

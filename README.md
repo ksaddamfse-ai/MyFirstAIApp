@@ -88,7 +88,8 @@ curl -X POST "http://localhost:5184/api/benchmark?question=Hello"
 ```
 Controllers/        # ChatController.cs, BenchmarkController.cs
 Services/           # IBenchmarkService / BenchmarkService
-Models/             # ProviderRegistryEntry, ProviderInfo, BenchmarkEntry
+Models/             # ProviderInfo, BenchmarkEntry
+Settings/           # ProviderRegistryEntry
 Filters/            # ProviderDropdownFilter.cs (Swagger dropdown)
 Program.cs          # ~30 lines — registration loop + pipeline
 appsettings.json    # ProviderRegistry (remote providers)

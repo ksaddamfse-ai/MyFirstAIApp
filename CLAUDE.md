@@ -20,11 +20,12 @@ No tests exist. If adding tests, place them in a `Tests/` folder at repo root wi
 ```
 Controllers/        # API endpoints (ChatController.cs, BenchmarkController.cs)
 Services/           # IBenchmarkService / BenchmarkService
-Models/             # BenchmarkEntry, ProviderInfo, BenchmarkOptions
+Models/             # ProviderInfo, BenchmarkEntry
+Settings/           # ProviderRegistryEntry
+Filters/            # ProviderDropdownFilter.cs (Swagger dropdown)
 Program.cs          # DI registration of AI providers and pipeline
-OpenRouterOptions.cs
-NvidiaNimOptions.cs
-appsettings.json    # API keys (placeholder: "API-KEY")
+appsettings.json    # ProviderRegistry (remote providers)
+appsettings.Development.json  # ProviderRegistry (local-only providers)
 ```
 
 ## AI Providers (DI)
@@ -39,7 +40,7 @@ All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 ## API Endpoints
 
-- `POST /api/chat?question=...` — calls `IChatClient` (OpenRouter)
+- `POST /api/chat?question=...&provider=...` — calls `IChatClient` (default: OpenRouter)
 - `GET  /api/benchmark/providers` — list available providers
 - `POST /api/benchmark?question=...&providers=...` — benchmark providers
 
@@ -47,9 +48,14 @@ All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 Edit `appsettings.json`:
 ```json
-"OpenRouter": { "ApiKey": "your-key", "ModelName": "openrouter/free" }
-"Ollama":     { "BaseUrl": "http://localhost:11434", "ModelName": "llama3" }
-"NvidiaNim":  { "ApiKey": "your-key", "ModelName": "meta/llama-3.3-70b-instruct" }
+"ProviderRegistry": {
+    "OpenRouter": {
+        "Enabled": true, "Type": "OpenAI",
+        "ApiKey": "your-key",
+        "BaseUrl": "https://openrouter.ai/api/v1",
+        "ModelName": "openrouter/free"
+    }
+}
 ```
 
 **Never commit real API keys.** Gitleaks runs on push/PR to `main`.

@@ -9,6 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Tests\**\*" />
+    <Content Remove="Tests\**\*" />
+    <EmbeddedResource Remove="Tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
 	  <PackageReference Include="Microsoft.Extensions.AI.Ollama" Version="9.7.0-preview.1.25356.2" />
     <!-- Align all Microsoft.Extensions.AI.* packages to the 10.x stable family -->

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using MyFirstAIApp.Models;
+using MyFirstAIApp.Settings;
 
 namespace MyFirstAIApp.Services;
 
@@ -35,7 +36,6 @@ public class BenchmarkService : IBenchmarkService
             providers.Add(new ProviderInfo
             {
                 Key = key,
-                ProviderName = key,
                 ModelId = entry.ModelName
             });
         }
@@ -53,16 +53,22 @@ public class BenchmarkService : IBenchmarkService
 
         var tasks = keys.Select(key => RunSingleAsync(key, question, cancellationToken));
         var entries = await Task.WhenAll(tasks);
-        return [.. entries.OfType<BenchmarkEntry>()];
+        return [.. entries];
     }
 
-    private async Task<BenchmarkEntry?> RunSingleAsync(string key, string question, CancellationToken cancellationToken)
+    private async Task<BenchmarkEntry> RunSingleAsync(string key, string question, CancellationToken cancellationToken)
     {
         var client = _serviceProvider.GetKeyedService<IChatClient>(key);
         if (client is null)
         {
             _logger.LogWarning("Provider {Key} not registered, skipping", key);
-            return null;
+            return new BenchmarkEntry
+            {
+                Provider = key,
+                Model = "unknown",
+                Success = false,
+                Error = $"Provider '{key}' not registered"
+            };
         }
 
         var modelId = _registry.TryGetValue(key, out var entry) ? entry.ModelName : "unknown";
@@ -78,7 +84,6 @@ public class BenchmarkService : IBenchmarkService
             return new BenchmarkEntry
             {
                 Provider = key,
-                ProviderName = key,
                 Model = modelId,
                 Success = true,
                 Response = response?.Text,
@@ -94,7 +99,6 @@ public class BenchmarkService : IBenchmarkService
             return new BenchmarkEntry
             {
                 Provider = key,
-                ProviderName = key,
                 Model = modelId,
                 Success = false,
                 LatencyMs = sw.ElapsedMilliseconds,
