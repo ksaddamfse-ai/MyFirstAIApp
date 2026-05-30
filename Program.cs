@@ -2,6 +2,8 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using MyFirstAIApp;
 using MyFirstAIApp.Clients;
+using MyFirstAIApp.Models;
+using MyFirstAIApp.Services;
 using OpenAI;
 using System.ClientModel;
 
@@ -23,19 +25,19 @@ builder.Services.AddDistributedMemoryCache();
 // OpenRouter
 builder.Services.Configure<OpenRouterOptions>(builder.Configuration.GetSection("OpenRouter"));
 var openRouterApiKey = builder.Configuration["OpenRouter:ApiKey"];
-var openRouterModel = builder.Configuration["OpenRouter:Model"];
+var openRouterModel = builder.Configuration["OpenRouter:ModelName"];
 var openRouterOptions = new OpenAIClientOptions
 {
     Endpoint = new Uri(builder.Configuration["OpenRouter:BaseUrl"]!)
 };
 var openRouterClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey!), openRouterOptions);
-builder.Services.AddKeyedChatClient("OpenRouterOpenAI", openRouterClient.AsChatClient(openRouterModel));
+builder.Services.AddKeyedChatClient("OpenRouterOpenAI", openRouterClient.AsChatClient(openRouterModel!));
 
 // Custom OpenRouter client
-builder.Services.AddKeyedChatClient("OpenRouterCustom", serviceProvider =>
-    new OpenRouterAPIClient(
-        serviceProvider.GetRequiredService<IOptions<OpenRouterOptions>>(),
-        serviceProvider.GetRequiredService<ILogger<OpenRouterAPIClient>>()));
+//builder.Services.AddKeyedChatClient("OpenRouterCustom", serviceProvider =>
+//    new OpenRouterAPIClient(
+//        serviceProvider.GetRequiredService<IOptions<OpenRouterOptions>>(),
+//        serviceProvider.GetRequiredService<ILogger<OpenRouterAPIClient>>()));
 
 // Ollama
 builder.Services.AddKeyedChatClient("Ollama",
@@ -45,7 +47,7 @@ builder.Services.AddKeyedChatClient("Ollama",
 
 // NvidiaNim
 var nvidiaApiKey = builder.Configuration["NvidiaNim:ApiKey"];
-var nvidiaModelName = builder.Configuration["NvidiaNim:Model"];
+var nvidiaModelName = builder.Configuration["NvidiaNim:ModelName"];
 var nvidiaOptions = new OpenAIClientOptions
 {
     Endpoint = new Uri(builder.Configuration["NvidiaNim:BaseUrl"]!)
@@ -54,11 +56,10 @@ var nvidiaClient = new OpenAIClient(new ApiKeyCredential(nvidiaApiKey!), nvidiaO
 builder.Services.AddKeyedChatClient("NvidiaNimOpenAI", nvidiaClient.AsChatClient(nvidiaModelName!));
 
 builder.Services.AddTransient<IMyAiService, MyAiService>();
+builder.Services.Configure<BenchmarkOptions>(builder.Configuration.GetSection("Benchmark"));
+builder.Services.AddTransient<IBenchmarkService, BenchmarkService>();
 
 var app = builder.Build();
-
-// Program-level logger
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
