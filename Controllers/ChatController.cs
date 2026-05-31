@@ -14,7 +14,17 @@ public class ChatController(
     IOptions<Dictionary<string, ProviderRegistryEntry>> registry,
     IChatClientFactory clientFactory) : ControllerBase
 {
+    /// <summary>Send a chat message to a specified AI provider and model.</summary>
+    /// <param name="question">The user message to send.</param>
+    /// <param name="provider">Provider name (e.g. OpenRouter). Defaults to OpenRouter.</param>
+    /// <param name="model">Model name within the provider (e.g. openrouter/free). Defaults to openrouter/free.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The AI response text.</returns>
+    /// <response code="200">Returns the AI response.</response>
+    /// <response code="400">Provider or model is disabled, not found, or invalid.</response>
     [HttpPost]
+    [ProducesResponseType<string>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Ask(
         [FromQuery] string question,
         [FromQuery] string provider = "OpenRouter",

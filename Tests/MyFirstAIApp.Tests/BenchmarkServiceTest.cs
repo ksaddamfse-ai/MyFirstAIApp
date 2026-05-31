@@ -59,8 +59,8 @@ public class BenchmarkServiceTest
         var result = service.GetAvailableProviders();
 
         Assert.Equal(2, result.Count);
-        Assert.Contains(result, p => p == "OpenRouter__openrouter/free");
-        Assert.Contains(result, p => p == "Ollama__llama3");
+        Assert.Contains(result, p => p.Name == "OpenRouter" && p.Models[0] == "openrouter/free");
+        Assert.Contains(result, p => p.Name == "Ollama" && p.Models[0] == "llama3");
     }
 
     [Fact]
@@ -71,7 +71,8 @@ public class BenchmarkServiceTest
         var result = service.GetAvailableProviders();
 
         Assert.Single(result);
-        Assert.Equal("OpenRouter__openrouter/free", result[0]);
+        Assert.Equal("OpenRouter", result[0].Name);
+        Assert.Equal("openrouter/free", result[0].Models[0]);
     }
 
     [Fact]

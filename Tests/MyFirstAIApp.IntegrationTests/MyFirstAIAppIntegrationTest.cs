@@ -60,10 +60,11 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
-        var providers = JsonSerializer.Deserialize<string[]>(body);
+        var providers = JsonSerializer.Deserialize<JsonElement[]>(body);
 
         Assert.NotNull(providers);
-        Assert.Contains(providers, p => p == "MockProvider__mock-model");
+        Assert.Contains(providers, p => p.GetProperty("name").GetString() == "MockProvider"
+            && p.GetProperty("models")[0].GetString() == "mock-model");
     }
 
     [Fact]

@@ -94,7 +94,7 @@ dotnet run
 |--------|----------|-------------|
 | `GET`  | `/health` | Health check |
 | `POST` | `/api/chat?question=...&provider=...&model=...` | Chat with a provider+model (defaults to OpenRouter, openrouter/free) |
-| `GET`  | `/api/benchmark/providers` | List available `Provider__Model` targets |
+| `GET`  | `/api/benchmark/providers` | List available providers with their models |
 | `POST` | `/api/benchmark` | Benchmark one or more targets via JSON body |
 
 ### Chat
@@ -129,7 +129,7 @@ curl -X POST http://localhost:5184/api/benchmark \
 MyFirstAIApp/
 ├── Controllers/        # ChatController, BenchmarkController
 ├── Services/           # IBenchmarkService / BenchmarkService, IChatClientFactory / ChatClientFactory
-├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget, ResolveClientResult
+├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget, ProviderModels, ResolveClientResult
 ├── Settings/           # ProviderRegistryEntry (maps appsettings.json)
 ├── Filters/            # ProviderDropdownFilter (Swagger dropdown for provider, model)
 ├── Tests/              # xunit + Moq (23 tests across services and controllers)
@@ -189,6 +189,23 @@ Each `Provider__Model` combination is registered as a separate keyed service:
 | `OpenRouter__google/gemma-4-31b-it:free` | OpenRouter | google/gemma-4-31b-it:free |
 | `Ollama__llama3` | Ollama | llama3 |
 | `NvidiaNim__meta/llama-3.3-70b-instruct` | Nvidia NIM | meta/llama-3.3-70b-instruct |
+
+### Providers API
+
+`GET /api/benchmark/providers` returns a structured list:
+
+```json
+[
+  {
+    "name": "OpenRouter",
+    "models": ["openrouter/free", "google/gemma-4-31b-it:free"]
+  },
+  {
+    "name": "Ollama",
+    "models": ["llama3"]
+  }
+]
+```
 
 ## OpenTelemetry
 

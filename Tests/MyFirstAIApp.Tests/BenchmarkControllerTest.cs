@@ -9,11 +9,15 @@ namespace MyFirstAIApp.Tests;
 public class BenchmarkControllerTest
 {
     private readonly Mock<IBenchmarkService> _benchmarkService = new();
-    private readonly List<string> _providers;
+    private readonly List<ProviderModels> _providers;
 
     public BenchmarkControllerTest()
     {
-        _providers = ["OpenRouter__openrouter/free", "Ollama__llama3"];
+        _providers =
+        [
+            new ProviderModels { Name = "OpenRouter", Models = ["openrouter/free"] },
+            new ProviderModels { Name = "Ollama", Models = ["llama3"] }
+        ];
     }
 
     private BenchmarkController CreateController()
@@ -32,8 +36,10 @@ public class BenchmarkControllerTest
         var result = controller.GetProviders();
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var list = Assert.IsType<List<string>>(okResult.Value);
+        var list = Assert.IsType<List<ProviderModels>>(okResult.Value);
         Assert.Equal(2, list.Count);
+        Assert.Equal("OpenRouter", list[0].Name);
+        Assert.Equal("llama3", list[1].Models[0]);
     }
 
     [Fact]
@@ -47,7 +53,7 @@ public class BenchmarkControllerTest
         var result = controller.GetProviders();
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var list = Assert.IsType<List<string>>(okResult.Value);
+        var list = Assert.IsType<List<ProviderModels>>(okResult.Value);
         Assert.Empty(list);
     }
 

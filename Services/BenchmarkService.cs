@@ -22,24 +22,19 @@ public class BenchmarkService : IBenchmarkService
         _logger = logger;
     }
 
-    public List<string> GetAvailableProviders()
+    public List<ProviderModels> GetAvailableProviders()
     {
-        var providers = new List<string>();
-
-        foreach (var (key, entry) in _registry)
-        {
-            if (!entry.Enabled) continue;
-
-            foreach (var model in entry.Models)
+        return _registry
+            .Where(kvp => kvp.Value.Enabled)
+            .Select(kvp => new ProviderModels
             {
-                var target = $"{key}__{model}";
-                var client = _clientFactory.GetClient(target);
-                if (client is not null)
-                    providers.Add(target);
-            }
-        }
-
-        return providers;
+                Name = kvp.Key,
+                Models = kvp.Value.Models
+                    .Where(m => _clientFactory.GetClient($"{kvp.Key}__{m}") is not null)
+                    .ToList()
+            })
+            .Where(p => p.Models.Count > 0)
+            .ToList();
     }
 
     public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, List<ProviderTarget>? targets, CancellationToken cancellationToken = default)
@@ -48,7 +43,8 @@ public class BenchmarkService : IBenchmarkService
         if (targets is { Count: > 0 })
             keys = targets.Select(t => $"{t.Provider}__{t.Model}");
         else
-            keys = GetAvailableProviders();
+            keys = GetAvailableProviders()
+                .SelectMany(p => p.Models.Select(m => $"{p.Name}__{m}"));
 
         var tasks = keys.Select(key => RunSingleAsync(key, question, cancellationToken));
         var entries = await Task.WhenAll(tasks);

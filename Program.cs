@@ -11,7 +11,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => c.ParameterFilter<ProviderDropdownFilter>());
+builder.Services.AddSwaggerGen(c =>
+{
+    c.ParameterFilter<ProviderDropdownFilter>();
+    c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "MyFirstAIApp.xml"), includeControllerXmlComments: true);
+});
 
 // Config-driven provider registration with middleware pipeline
 foreach (var section in builder.Configuration.GetSection("ProviderRegistry").GetChildren())
