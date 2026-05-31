@@ -3,9 +3,9 @@ using MyFirstAIApp;
 using MyFirstAIApp.Settings;
 using MyFirstAIApp.Services;
 using OpenAI;
-using OpenTelemetry;
 using OpenTelemetry.Trace;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +41,11 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
             {
                 client = new OpenAIClient(
                     new ApiKeyCredential(section["ApiKey"]!),
-                    new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
+                    new OpenAIClientOptions
+                    {
+                        Endpoint = new Uri(section["BaseUrl"]!),
+                        RetryPolicy = new ClientRetryPolicy(maxRetries: 3)
+                    })
                     .GetChatClient(model)
                     .AsIChatClient();
             }

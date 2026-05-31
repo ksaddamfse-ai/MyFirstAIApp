@@ -25,8 +25,10 @@ This project shows a **config-driven** approach: drop a JSON block in `appsettin
 - **Enable/disable** — per-provider toggle at runtime, no code needed
 - **Environment-aware** — Ollama lives in `appsettings.Development.json`, never shipped to production
 - **Swagger dropdown** — provider and model dropdowns auto-populated from the registry
-- **Chat API** — `POST /api/chat?provider=X&model=Y` with `IChatClient` pipeline (logging, OpenTelemetry)
+- **Chat API** — `POST /api/chat?provider=X&model=Y` with `IChatClient` pipeline (logging, OpenTelemetry, retry)
 - **Benchmark API** — compare latency across providers via JSON body with structured provider+model pairs
+- **Automatic retry** — `ClientRetryPolicy` (exponential backoff on 429/5xx) for all OpenAI-compatible providers
+- **Health endpoint** — `GET /health` returns `{ status: "healthy" }`
 - **OpenTelemetry** — tracing instrumentation for ASP.NET Core, HTTP client, and AI pipeline
 - **Secret scanning** — Gitleaks on push/PR to `main`
 - **Tests** — 23 xunit tests (17 unit + 6 integration)
@@ -90,6 +92,7 @@ dotnet run
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET`  | `/health` | Health check |
 | `POST` | `/api/chat?question=...&provider=...&model=...` | Chat with a provider+model (defaults to OpenRouter, openrouter/free) |
 | `GET`  | `/api/benchmark/providers` | List available `Provider__Model` targets |
 | `POST` | `/api/benchmark` | Benchmark one or more targets via JSON body |
@@ -126,7 +129,7 @@ curl -X POST http://localhost:5184/api/benchmark \
 MyFirstAIApp/
 ├── Controllers/        # ChatController, BenchmarkController
 ├── Services/           # IBenchmarkService / BenchmarkService, IChatClientFactory / ChatClientFactory
-├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget
+├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget, ResolveClientResult
 ├── Settings/           # ProviderRegistryEntry (maps appsettings.json)
 ├── Filters/            # ProviderDropdownFilter (Swagger dropdown for provider, model)
 ├── Tests/              # xunit + Moq (23 tests across services and controllers)
