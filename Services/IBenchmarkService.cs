@@ -4,6 +4,6 @@ namespace MyFirstAIApp.Services;
 
 public interface IBenchmarkService
 {
-    List<ProviderInfo> GetAvailableProviders();
-    Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? providerKeys);
+    List<ProviderModels> GetAvailableProviders();
+    Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, List<ProviderTarget>? targets, CancellationToken cancellationToken = default);
 }
