@@ -1,75 +1,77 @@
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
 using MyFirstAIApp;
-using MyFirstAIApp.Clients;
-using MyFirstAIApp.Models;
+using MyFirstAIApp.Settings;
 using MyFirstAIApp.Services;
 using OpenAI;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Logging
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Information);
-
-// Services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSwaggerGen(c => c.ParameterFilter<ProviderDropdownFilter>());
 
-// AI Provider Integration
-
-// OpenRouter
-builder.Services.Configure<OpenRouterOptions>(builder.Configuration.GetSection("OpenRouter"));
-var openRouterApiKey = builder.Configuration["OpenRouter:ApiKey"];
-var openRouterModel = builder.Configuration["OpenRouter:ModelName"];
-var openRouterOptions = new OpenAIClientOptions
+// Config-driven provider registration with middleware pipeline
+foreach (var section in builder.Configuration.GetSection("ProviderRegistry").GetChildren())
 {
-    Endpoint = new Uri(builder.Configuration["OpenRouter:BaseUrl"]!)
-};
-var openRouterClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey!), openRouterOptions);
-builder.Services.AddKeyedChatClient("OpenRouterOpenAI", openRouterClient.AsChatClient(openRouterModel!));
+    var key = section.Key;
+    var type = section["Type"];
+    var modelName = section["ModelName"]!;
 
-// Custom OpenRouter client
-//builder.Services.AddKeyedChatClient("OpenRouterCustom", serviceProvider =>
-//    new OpenRouterAPIClient(
-//        serviceProvider.GetRequiredService<IOptions<OpenRouterOptions>>(),
-//        serviceProvider.GetRequiredService<ILogger<OpenRouterAPIClient>>()));
+    builder.Services.AddKeyedChatClient(key, serviceProvider =>
+    {
+        IChatClient client;
+        if (type == "Ollama")
+        {
+            client = new OllamaChatClient(section["BaseUrl"]!, modelName);
+        }
+        else
+        {
+            var apiKey = section["ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+                return null!;
 
-// Ollama
-builder.Services.AddKeyedChatClient("Ollama",
-    new OllamaChatClient(
-        builder.Configuration["Ollama:BaseUrl"]!,
-        builder.Configuration["Ollama:ModelName"]));
+            client = new OpenAIClient(
+                new ApiKeyCredential(apiKey),
+                new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
+                .GetChatClient(modelName)
+                .AsIChatClient();
+        }
 
-// NvidiaNim
-var nvidiaApiKey = builder.Configuration["NvidiaNim:ApiKey"];
-var nvidiaModelName = builder.Configuration["NvidiaNim:ModelName"];
-var nvidiaOptions = new OpenAIClientOptions
-{
-    Endpoint = new Uri(builder.Configuration["NvidiaNim:BaseUrl"]!)
-};
-var nvidiaClient = new OpenAIClient(new ApiKeyCredential(nvidiaApiKey!), nvidiaOptions);
-builder.Services.AddKeyedChatClient("NvidiaNimOpenAI", nvidiaClient.AsChatClient(nvidiaModelName!));
+        return client.AsBuilder()
+            .UseLogging()
+            .UseOpenTelemetry()
+            .Build(serviceProvider);
+    });
+}
 
-builder.Services.AddTransient<IMyAiService, MyAiService>();
-builder.Services.Configure<BenchmarkOptions>(builder.Configuration.GetSection("Benchmark"));
+builder.Services.Configure<Dictionary<string, ProviderRegistryEntry>>(
+    builder.Configuration.GetSection("ProviderRegistry"));
+builder.Services.AddSingleton<IChatClientFactory, ChatClientFactory>();
 builder.Services.AddTransient<IBenchmarkService, BenchmarkService>();
+
+// OpenTelemetry: traces for ASP.NET Core and HTTP
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+    });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
 app.MapControllers();
-
 app.Run();

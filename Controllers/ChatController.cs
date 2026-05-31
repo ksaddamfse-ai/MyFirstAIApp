@@ -1,58 +1,38 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MyFirstAIApp;
-using MyFirstAIApp.Models;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using MyFirstAIApp.Services;
+using MyFirstAIApp.Settings;
+
+namespace MyFirstAIApp;
 
 [ApiController]
 [Route("api/chat")]
-public class ChatController : ControllerBase
+public class ChatController(
+    ILogger<ChatController> logger,
+    IOptions<Dictionary<string, ProviderRegistryEntry>> registry,
+    IChatClientFactory clientFactory) : ControllerBase
 {
-    private readonly ILogger<ChatController> _logger;
-    private readonly IMyAiService _myAiService;
-    private readonly IBenchmarkService _benchmarkService;
-
-    public ChatController(ILogger<ChatController> logger, IMyAiService myAiService, IBenchmarkService benchmarkService)
-    {
-        _logger = logger;
-        _myAiService = myAiService;
-        _benchmarkService = benchmarkService;
-    }
-
     [HttpPost]
-    public async Task<IActionResult> Ask([FromQuery] string question)
-    {
-        _logger.LogInformation("Received chat request: {Question}", question);
-        var answer = await _myAiService.RunAsync(question);
-        _logger.LogInformation("Returning answer (length {Length})", answer?.Length ?? 0);
-        return Ok(answer);
-    }
-
-    [HttpPost("myai")]
-    public async Task<IActionResult> AskMyAi([FromQuery] string question)
-    {
-        _logger.LogInformation("Received My AI chat request: {Question}", question);
-        var answer = await _myAiService.RunAsync(question);
-        _logger.LogInformation("Returning My AI answer (length {Length})", answer?.Length ?? 0);
-        return Ok(answer);
-    }
-
-    [HttpGet("benchmark/providers")]
-    public IActionResult GetProviders()
-    {
-        var providers = _benchmarkService.GetAvailableProviders();
-        return Ok(providers);
-    }
-
-    [HttpPost("benchmark")]
-    public async Task<IActionResult> RunBenchmark(
+    public async Task<IActionResult> Ask(
         [FromQuery] string question,
-        [FromQuery] string? providers = null)
+        [FromQuery] string provider = "OpenRouter",
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(question))
-            return BadRequest("question is required");
+        var client = ResolveClient(provider);
+        if (client is null)
+            return BadRequest($"Provider '{provider}' is disabled or not found");
 
-        var providerKeys = providers?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var results = await _benchmarkService.RunBenchmarkAsync(question, providerKeys);
-        return Ok(results);
+        logger.LogInformation("Chat request ({Provider}): {Question}", provider, question);
+        var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
+        return Ok(response?.Text);
+    }
+
+    private IChatClient? ResolveClient(string provider)
+    {
+        if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
+            return null;
+
+        return clientFactory.GetClient(provider);
     }
 }

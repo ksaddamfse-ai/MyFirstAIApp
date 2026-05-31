@@ -18,37 +18,44 @@ No tests exist. If adding tests, place them in a `Tests/` folder at repo root wi
 ## Project Structure
 
 ```
-Controllers/        # API endpoints (ChatController.cs)
-Services/           # IMyAiService / MyAiService (wraps IChatClient)
-Clients/            # Custom IChatClient implementations (OpenRouterAPIClient.cs)
+Controllers/        # API endpoints (ChatController.cs, BenchmarkController.cs)
+Services/           # IBenchmarkService / BenchmarkService
+Models/             # ProviderInfo, BenchmarkEntry
+Settings/           # ProviderRegistryEntry
+Filters/            # ProviderDropdownFilter.cs (Swagger dropdown)
 Program.cs          # DI registration of AI providers and pipeline
-OpenRouterOptions.cs
-NvidiaNimOptions.cs
-appsettings.json    # API keys (placeholder: "API-KEY")
+appsettings.json    # ProviderRegistry (remote providers)
+appsettings.Development.json  # ProviderRegistry (local-only providers)
 ```
 
 ## AI Providers (DI)
 
 | Keyed Service Name     | Provider      | How                        |
 |------------------------|---------------|----------------------------|
-| `OpenRouterOpenAI`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
+| `OpenRouter`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
 | `Ollama`               | Ollama        | `OllamaChatClient`          |
-| `NvidiaNimOpenAI`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
+| `NvidiaNim`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
 
 All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 ## API Endpoints
 
-- `POST /api/chat?question=...` — calls `IMyAiService` (OpenRouterOpenAI)
-- `POST /api/chat/myai?question=...` — same service
+- `POST /api/chat?question=...&provider=...` — calls `IChatClient` (default: OpenRouter)
+- `GET  /api/benchmark/providers` — list available providers
+- `POST /api/benchmark?question=...&providers=...` — benchmark providers
 
 ## Config
 
 Edit `appsettings.json`:
 ```json
-"OpenRouter": { "ApiKey": "your-key", "ModelName": "openrouter/free" }
-"Ollama":     { "BaseUrl": "http://localhost:11434", "ModelName": "llama3" }
-"NvidiaNim":  { "ApiKey": "your-key", "ModelName": "meta/llama-3.3-70b-instruct" }
+"ProviderRegistry": {
+    "OpenRouter": {
+        "Enabled": true, "Type": "OpenAI",
+        "ApiKey": "your-key",
+        "BaseUrl": "https://openrouter.ai/api/v1",
+        "ModelName": "openrouter/free"
+    }
+}
 ```
 
 **Never commit real API keys.** Gitleaks runs on push/PR to `main`.
@@ -61,10 +68,11 @@ Edit `appsettings.json`:
 - Nullable reference types enabled
 - No comments on code unless explaining *why* not *what*
 - Async all the way: suffix async methods with `Async`
-- All services via interfaces (e.g. `IMyAiService` / `MyAiService`)
+- All services via interfaces (e.g. `IBenchmarkService` / `BenchmarkService`)
 - Prefer primary constructors where appropriate
 - Use `Microsoft.Extensions.AI.IChatClient` for AI provider abstraction
 - Register providers as keyed services via `AddKeyedChatClient`
+- Private methods go last in the file
 
 ## Karpathy Guidelines
 
