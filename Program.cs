@@ -27,6 +27,9 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
     {
         var key = $"{providerKey}__{model}";
 
+        if (type != "Ollama" && string.IsNullOrEmpty(section["ApiKey"]))
+            continue;
+
         builder.Services.AddKeyedChatClient(key, serviceProvider =>
         {
             IChatClient client;
@@ -36,12 +39,8 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
             }
             else
             {
-                var apiKey = section["ApiKey"];
-                if (string.IsNullOrEmpty(apiKey))
-                    return null!;
-
                 client = new OpenAIClient(
-                    new ApiKeyCredential(apiKey),
+                    new ApiKeyCredential(section["ApiKey"]!),
                     new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
                     .GetChatClient(model)
                     .AsIChatClient();
@@ -83,4 +82,6 @@ else
 }
 
 app.MapControllers();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.Run();

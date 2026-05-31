@@ -90,7 +90,7 @@ public class ChatControllerTest
         var result = await controller.Ask("hello", "NonExistent", "model");
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("disabled", badRequest.Value?.ToString());
+        Assert.Contains("not found", badRequest.Value?.ToString());
     }
 
     [Fact]

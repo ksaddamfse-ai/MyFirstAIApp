@@ -69,7 +69,8 @@ public class BenchmarkService : IBenchmarkService
             };
         }
 
-        var (provider, model) = (parts[0], parts[1]);
+        var provider = parts[0];
+        var model = parts[1];
         var client = _clientFactory.GetClient(target);
         if (client is null)
         {
@@ -90,7 +91,7 @@ public class BenchmarkService : IBenchmarkService
             var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
             sw.Stop();
 
-            _logger.LogInformation("Benchmark {Provider}/{Model} OK ({Ms}ms)", provider, model, sw.ElapsedMilliseconds);
+            _logger.LogDebug("Benchmark {Provider}/{Model} OK ({Ms}ms)", provider, model, sw.ElapsedMilliseconds);
 
             return new BenchmarkEntry
             {

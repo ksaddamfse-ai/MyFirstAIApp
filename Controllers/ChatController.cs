@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using MyFirstAIApp.Models;
 using MyFirstAIApp.Services;
 using MyFirstAIApp.Settings;
 
@@ -20,23 +21,26 @@ public class ChatController(
         [FromQuery] string model = "openrouter/free",
         CancellationToken cancellationToken = default)
     {
-        var client = ResolveClient(provider, model);
-        if (client is null)
-            return BadRequest($"Provider '{provider}' model '{model}' is disabled or not found");
+        var result = ResolveClient(provider, model);
+        if (!result.IsSuccess)
+            return BadRequest(result.Error);
 
-        logger.LogInformation("Chat request ({Provider}/{Model}): {Question}", provider, model, question);
-        var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
+        logger.LogDebug("Chat request ({Provider}/{Model}): {Question}", provider, model, question);
+        var response = await result.Client!.GetResponseAsync(question, cancellationToken: cancellationToken);
         return Ok(response?.Text);
     }
 
-    private IChatClient? ResolveClient(string provider, string model)
+    private ResolveClientResult ResolveClient(string provider, string model)
     {
-        if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
-            return null;
+        if (!registry.Value.TryGetValue(provider, out var entry))
+            return new ResolveClientResult { Error = $"Provider '{provider}' not found in registry" };
 
-        if (!entry.Models.Contains(model))
-            return null;
+        if (!entry.Enabled)
+            return new ResolveClientResult { Error = $"Provider '{provider}' is disabled" };
 
-        return clientFactory.GetClient($"{provider}__{model}");
+        if (!entry.Models.Contains(model, StringComparer.OrdinalIgnoreCase))
+            return new ResolveClientResult { Error = $"Provider '{provider}' does not have model '{model}'" };
+
+        return new ResolveClientResult { Client = clientFactory.GetClient($"{provider}__{model}") };
     }
 }
