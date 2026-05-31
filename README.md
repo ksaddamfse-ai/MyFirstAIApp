@@ -20,14 +20,16 @@ This project shows a **config-driven** approach: drop a JSON block in `appsettin
 
 ## Features
 
+- **Multi-model per provider** — configure multiple models per provider (e.g. `openrouter/free`, `google/gemma-4-31b-it:free`)
 - **Config-driven registration** — `ProviderRegistry` in `appsettings.json` drives DI registration via a single loop
 - **Enable/disable** — per-provider toggle at runtime, no code needed
 - **Environment-aware** — Ollama lives in `appsettings.Development.json`, never shipped to production
-- **Swagger dropdown** — provider dropdown auto-populated from the registry
-- **Chat API** — `POST /api/chat` with dynamic provider selection
-- **Benchmark API** — compare latency across providers with `POST /api/benchmark`
+- **Swagger dropdown** — provider and model dropdowns auto-populated from the registry
+- **Chat API** — `POST /api/chat?provider=X&model=Y` with `IChatClient` pipeline (logging, OpenTelemetry)
+- **Benchmark API** — compare latency across providers via JSON body with structured provider+model pairs
+- **OpenTelemetry** — tracing instrumentation for ASP.NET Core, HTTP client, and AI pipeline
 - **Secret scanning** — Gitleaks on push/PR to `main`
-- **Tests** — 17 xunit tests across services and controllers
+- **Tests** — 23 xunit tests (17 unit + 6 integration)
 
 ## Getting Started
 
@@ -62,13 +64,13 @@ dotnet run
         "Enabled": true, "Type": "OpenAI",
         "ApiKey": "your-openrouter-api-key",
         "BaseUrl": "https://openrouter.ai/api/v1",
-        "ModelName": "openrouter/free"
+        "Models": ["openrouter/free", "google/gemma-4-31b-it:free"]
     },
     "NvidiaNim": {
         "Enabled": true, "Type": "OpenAI",
         "ApiKey": "your-nvidia-nim-api-key",
         "BaseUrl": "https://integrate.api.nvidia.com/v1",
-        "ModelName": "meta/llama-3.3-70b-instruct"
+        "Models": ["meta/llama-3.3-70b-instruct"]
     }
 }
 ```
@@ -79,7 +81,7 @@ dotnet run
     "Ollama": {
         "Enabled": true, "Type": "Ollama",
         "BaseUrl": "http://localhost:11434",
-        "ModelName": "llama3"
+        "Models": ["llama3"]
     }
 }
 ```
@@ -88,21 +90,34 @@ dotnet run
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/chat?question=...&provider=...` | Chat with a provider (defaults to OpenRouter) |
-| `GET`  | `/api/benchmark/providers` | List enabled providers |
-| `POST` | `/api/benchmark?question=...&providers=...` | Benchmark one or more providers |
+| `POST` | `/api/chat?question=...&provider=...&model=...` | Chat with a provider+model (defaults to OpenRouter, openrouter/free) |
+| `GET`  | `/api/benchmark/providers` | List available `Provider__Model` targets |
+| `POST` | `/api/benchmark` | Benchmark one or more targets via JSON body |
 
-### Demo
+### Chat
 
 ```bash
-# List available providers
-curl http://localhost:5184/api/benchmark/providers
+curl -X POST "http://localhost:5184/api/chat?question=Hello&provider=OpenRouter&model=openrouter/free"
+```
 
-# Chat with OpenRouter
-curl -X POST "http://localhost:5184/api/chat?question=Hello&provider=OpenRouter"
+### Benchmark
 
-# Benchmark all enabled providers
-curl -X POST "http://localhost:5184/api/benchmark?question=Hello"
+```bash
+# All enabled providers
+curl -X POST http://localhost:5184/api/benchmark \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Hello"}'
+
+# Specific targets
+curl -X POST http://localhost:5184/api/benchmark \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Hello",
+    "targets": [
+      {"provider": "OpenRouter", "model": "openrouter/free"},
+      {"provider": "Ollama", "model": "llama3"}
+    ]
+  }'
 ```
 
 ## Project Structure
@@ -110,12 +125,12 @@ curl -X POST "http://localhost:5184/api/benchmark?question=Hello"
 ```
 MyFirstAIApp/
 ├── Controllers/        # ChatController, BenchmarkController
-├── Services/           # IBenchmarkService / BenchmarkService
-├── Models/             # ProviderInfo, BenchmarkEntry
+├── Services/           # IBenchmarkService / BenchmarkService, IChatClientFactory / ChatClientFactory
+├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget
 ├── Settings/           # ProviderRegistryEntry (maps appsettings.json)
-├── Filters/            # ProviderDropdownFilter (Swagger)
-├── Tests/              # xunit + Moq (17 tests, 1:1 with production files)
-├── Program.cs          # ~30 lines — registration loop + pipeline
+├── Filters/            # ProviderDropdownFilter (Swagger dropdown for provider, model)
+├── Tests/              # xunit + Moq (23 tests across services and controllers)
+├── Program.cs          # Config-driven provider registration loop + pipeline
 ├── Dockerfile          # Multi-stage build
 └── appsettings*.json   # ProviderRegistry config
 ```
@@ -129,7 +144,7 @@ Add this block to `ProviderRegistry` in `appsettings.json`:
     "Enabled": true, "Type": "OpenAI",
     "ApiKey": "your-groq-api-key",
     "BaseUrl": "https://api.groq.com/openai/v1",
-    "ModelName": "mixtral-8x7b-32768"
+    "Models": ["mixtral-8x7b-32768"]
 }
 ```
 
@@ -149,21 +164,44 @@ Put it in `appsettings.Development.json` instead of `appsettings.json`. It won't
 ## Architecture
 
 ```
-appsettings.json ──> ProviderRegistry ──> Program.cs loop ──> Keyed IChatClient
-                                              │
-                                              ├──> ChatController (validates Enabled flag)
-                                              └──> BenchmarkService (filters Enabled providers)
-                                                       │
-                                                       └──> ProviderDropdownFilter (Swagger)
+appsettings.json ──> ProviderRegistry ──> Program.cs loop ──> Keyed IChatClient (Provider__Model)
+                                               │
+                                               ├──> ChatController (validates provider + model against registry)
+                                               │      └── ResolveClient builds composite key for DI lookup
+                                               │
+                                               └──> BenchmarkService (filters Enabled providers)
+                                                        │
+                                                        ├──> POST /api/benchmark [JSON body]
+                                                        │      └── ProviderTarget → composite key → DI lookup
+                                                        └──> ProviderDropdownFilter (Swagger)
 ```
 
 ## AI Providers
 
-| Keyed Service | Provider | Implementation |
-|---------------|----------|----------------|
-| `OpenRouter` | OpenRouter | `OpenAIClient` SDK via MEAI |
-| `Ollama` | Ollama | `OllamaChatClient` |
-| `NvidiaNim` | Nvidia NIM | `OpenAIClient` SDK via MEAI |
+Each `Provider__Model` combination is registered as a separate keyed service:
+
+| Keyed Service Example | Provider | Model |
+|-----------------------|----------|-------|
+| `OpenRouter__openrouter/free` | OpenRouter | openrouter/free |
+| `OpenRouter__google/gemma-4-31b-it:free` | OpenRouter | google/gemma-4-31b-it:free |
+| `Ollama__llama3` | Ollama | llama3 |
+| `NvidiaNim__meta/llama-3.3-70b-instruct` | Nvidia NIM | meta/llama-3.3-70b-instruct |
+
+## OpenTelemetry
+
+Traces are instrumented for:
+- **ASP.NET Core** — every HTTP request span
+- **HTTP client** — outbound AI provider calls
+- **IChatClient pipeline** — per-request AI spans via `UseOpenTelemetry()`
+
+Add an exporter in `Program.cs` to view traces:
+
+```csharp
+// Already in the tracing pipeline, just add exporter:
+tracing.AddConsoleExporter();  // dev: console output
+// or
+tracing.AddZipkinExporter();   // production: Zipkin/Jaeger
+```
 
 ## Secret Scanning
 
