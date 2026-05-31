@@ -22,56 +22,67 @@ public class BenchmarkService : IBenchmarkService
         _logger = logger;
     }
 
-    public List<ProviderInfo> GetAvailableProviders()
+    public List<string> GetAvailableProviders()
     {
-        var providers = new List<ProviderInfo>();
+        var providers = new List<string>();
 
         foreach (var (key, entry) in _registry)
         {
             if (!entry.Enabled) continue;
 
-            var client = _clientFactory.GetClient(key);
-            if (client is null) continue;
-
-            providers.Add(new ProviderInfo
+            foreach (var model in entry.Models)
             {
-                Key = key,
-                ModelId = entry.ModelName
-            });
+                var target = $"{key}__{model}";
+                var client = _clientFactory.GetClient(key, model);
+                if (client is not null)
+                    providers.Add(target);
+            }
         }
 
         return providers;
     }
 
-    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? providerKeys, CancellationToken cancellationToken = default)
+    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? targets, CancellationToken cancellationToken = default)
     {
         IEnumerable<string> keys;
-        if (providerKeys is { Length: > 0 })
-            keys = providerKeys;
+        if (targets is { Length: > 0 })
+            keys = targets;
         else
-            keys = _registry.Where(e => e.Value.Enabled).Select(e => e.Key);
+            keys = GetAvailableProviders();
 
         var tasks = keys.Select(key => RunSingleAsync(key, question, cancellationToken));
         var entries = await Task.WhenAll(tasks);
         return [.. entries];
     }
 
-    private async Task<BenchmarkEntry> RunSingleAsync(string key, string question, CancellationToken cancellationToken)
+    private async Task<BenchmarkEntry> RunSingleAsync(string target, string question, CancellationToken cancellationToken)
     {
-        var client = _clientFactory.GetClient(key);
-        if (client is null)
+        var parts = target.Split("__", 2);
+        if (parts.Length != 2)
         {
-            _logger.LogWarning("Provider {Key} not registered, skipping", key);
             return new BenchmarkEntry
             {
-                Provider = key,
+                Provider = target,
                 Model = "unknown",
                 Success = false,
-                Error = $"Provider '{key}' not registered"
+                Error = $"Invalid target format '{target}'. Expected 'Provider__Model'."
             };
         }
 
-        var modelId = _registry.TryGetValue(key, out var entry) ? entry.ModelName : "unknown";
+        var (provider, model) = (parts[0], parts[1]);
+        var client = _clientFactory.GetClient(provider, model);
+        if (client is null)
+        {
+            _logger.LogWarning("Provider {Provider} model {Model} not registered, skipping", provider, model);
+            return new BenchmarkEntry
+            {
+                Provider = provider,
+                Model = model,
+                Success = false,
+                Error = $"Provider '{provider}' model '{model}' not registered"
+            };
+        }
+
         var sw = Stopwatch.StartNew();
 
         try
@@ -79,12 +90,12 @@ public class BenchmarkService : IBenchmarkService
             var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
             sw.Stop();
 
-            _logger.LogInformation("Benchmark {Key} OK ({Ms}ms)", key, sw.ElapsedMilliseconds);
+            _logger.LogInformation("Benchmark {Provider}/{Model} OK ({Ms}ms)", provider, model, sw.ElapsedMilliseconds);
 
             return new BenchmarkEntry
             {
-                Provider = key,
-                Model = modelId,
+                Provider = provider,
+                Model = model,
                 Success = true,
                 Response = response?.Text,
                 LatencyMs = sw.ElapsedMilliseconds
@@ -94,12 +105,12 @@ public class BenchmarkService : IBenchmarkService
         {
             sw.Stop();
 
-            _logger.LogWarning(ex, "Benchmark {Key} FAILED ({Ms}ms)", key, sw.ElapsedMilliseconds);
+            _logger.LogWarning(ex, "Benchmark {Provider}/{Model} FAILED ({Ms}ms)", provider, model, sw.ElapsedMilliseconds);
 
             return new BenchmarkEntry
             {
-                Provider = key,
-                Model = modelId,
+                Provider = provider,
+                Model = model,
                 Success = false,
                 LatencyMs = sw.ElapsedMilliseconds,
                 Error = ex.Message

@@ -17,22 +17,26 @@ public class ChatController(
     public async Task<IActionResult> Ask(
         [FromQuery] string question,
         [FromQuery] string provider = "OpenRouter",
+        [FromQuery] string model = "openrouter/free",
         CancellationToken cancellationToken = default)
     {
-        var client = ResolveClient(provider);
+        var client = ResolveClient(provider, model);
         if (client is null)
-            return BadRequest($"Provider '{provider}' is disabled or not found");
+            return BadRequest($"Provider '{provider}' model '{model}' is disabled or not found");
 
-        logger.LogInformation("Chat request ({Provider}): {Question}", provider, question);
+        logger.LogInformation("Chat request ({Provider}/{Model}): {Question}", provider, model, question);
         var response = await client.GetResponseAsync(question, cancellationToken: cancellationToken);
         return Ok(response?.Text);
     }
 
-    private IChatClient? ResolveClient(string provider)
+    private IChatClient? ResolveClient(string provider, string model)
     {
         if (!registry.Value.TryGetValue(provider, out var entry) || !entry.Enabled)
             return null;
 
-        return clientFactory.GetClient(provider);
+        if (!entry.Models.Contains(model))
+            return null;
+
+        return clientFactory.GetClient(provider, model);
     }
 }

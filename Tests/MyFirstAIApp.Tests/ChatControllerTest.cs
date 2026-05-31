@@ -25,7 +25,7 @@ public class ChatControllerTest
                 Type = "OpenAI",
                 ApiKey = "sk-test",
                 BaseUrl = "https://openrouter.ai/api/v1",
-                ModelName = "openrouter/free"
+                Models = ["openrouter/free"]
             },
             ["DisabledProvider"] = new()
             {
@@ -33,12 +33,12 @@ public class ChatControllerTest
                 Type = "OpenAI",
                 ApiKey = "sk-test",
                 BaseUrl = "https://example.com",
-                ModelName = "test"
+                Models = ["test"]
             }
         };
 
         _factory
-            .Setup(f => f.GetClient("OpenRouter"))
+            .Setup(f => f.GetClient("OpenRouter", "openrouter/free"))
             .Returns(_chatClient.Object);
     }
 
@@ -77,7 +77,7 @@ public class ChatControllerTest
     public async Task Ask_ReturnsBadRequest_WhenProviderDisabled()
     {
         var controller = CreateController();
-        var result = await controller.Ask("hello", "DisabledProvider");
+        var result = await controller.Ask("hello", "DisabledProvider", "test");
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Contains("disabled", badRequest.Value?.ToString());
@@ -87,7 +87,7 @@ public class ChatControllerTest
     public async Task Ask_ReturnsBadRequest_WhenProviderNotFound()
     {
         var controller = CreateController();
-        var result = await controller.Ask("hello", "NonExistent");
+        var result = await controller.Ask("hello", "NonExistent", "model");
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Contains("disabled", badRequest.Value?.ToString());

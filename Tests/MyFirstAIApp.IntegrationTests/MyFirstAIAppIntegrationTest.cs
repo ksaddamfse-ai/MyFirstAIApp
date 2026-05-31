@@ -25,7 +25,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "mocked response")));
 
         _mockFactory
-            .Setup(f => f.GetClient(It.IsAny<string>()))
+            .Setup(f => f.GetClient(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(_mockClient.Object);
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
@@ -38,7 +38,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
                     ["ProviderRegistry:MockProvider:Type"] = "OpenAI",
                     ["ProviderRegistry:MockProvider:ApiKey"] = "sk-test",
                     ["ProviderRegistry:MockProvider:BaseUrl"] = "https://mock.api.com/v1",
-                    ["ProviderRegistry:MockProvider:ModelName"] = "mock-model",
+                    ["ProviderRegistry:MockProvider:Models:0"] = "mock-model",
                 });
             });
 
@@ -58,10 +58,10 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
-        var providers = JsonSerializer.Deserialize<JsonElement[]>(body);
+        var providers = JsonSerializer.Deserialize<string[]>(body);
 
         Assert.NotNull(providers);
-        Assert.Contains(providers, p => p.GetProperty("key").GetString() == "MockProvider");
+        Assert.Contains(providers, p => p == "MockProvider__mock-model");
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
     public async Task Chat_ReturnsMockedResponse()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsync("/api/chat?question=Hello&provider=MockProvider", null);
+        var response = await client.PostAsync("/api/chat?question=Hello&provider=MockProvider&model=mock-model", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -98,7 +98,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
     public async Task Benchmark_ReturnsMockedResults()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsync("/api/benchmark?question=Hi&providers=MockProvider", null);
+        var response = await client.PostAsync("/api/benchmark?question=Hi&targets=MockProvider__mock-model", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -109,6 +109,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
         Assert.Single(results);
         Assert.True(results[0].GetProperty("success").GetBoolean());
         Assert.Equal("MockProvider", results[0].GetProperty("provider").GetString());
+        Assert.Equal("mock-model", results[0].GetProperty("model").GetString());
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
                     ["ProviderRegistry:DisabledProvider:Type"] = "OpenAI",
                     ["ProviderRegistry:DisabledProvider:ApiKey"] = "sk-test",
                     ["ProviderRegistry:DisabledProvider:BaseUrl"] = "https://mock.api.com/v1",
-                    ["ProviderRegistry:DisabledProvider:ModelName"] = "mock-model",
+                    ["ProviderRegistry:DisabledProvider:Models:0"] = "mock-model",
                 });
             });
 
@@ -135,7 +136,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
         });
 
         var client = disabledFactory.CreateClient();
-        var response = await client.PostAsync("/api/chat?question=Hello&provider=DisabledProvider", null);
+        var response = await client.PostAsync("/api/chat?question=Hello&provider=DisabledProvider&model=mock-model", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 

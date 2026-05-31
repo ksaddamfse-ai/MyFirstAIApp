@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.AI;
 using Moq;
 using MyFirstAIApp.Controllers;
 using MyFirstAIApp.Models;
@@ -10,15 +9,11 @@ namespace MyFirstAIApp.Tests;
 public class BenchmarkControllerTest
 {
     private readonly Mock<IBenchmarkService> _benchmarkService = new();
-    private readonly List<ProviderInfo> _providers;
+    private readonly List<string> _providers;
 
     public BenchmarkControllerTest()
     {
-        _providers =
-        [
-            new() { Key = "OpenRouter", ModelId = "openrouter/free" },
-            new() { Key = "Ollama", ModelId = "llama3" }
-        ];
+        _providers = ["OpenRouter__openrouter_free", "Ollama__llama3"];
     }
 
     private BenchmarkController CreateController()
@@ -37,7 +32,7 @@ public class BenchmarkControllerTest
         var result = controller.GetProviders();
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var list = Assert.IsType<List<ProviderInfo>>(okResult.Value);
+        var list = Assert.IsType<List<string>>(okResult.Value);
         Assert.Equal(2, list.Count);
     }
 
@@ -52,7 +47,7 @@ public class BenchmarkControllerTest
         var result = controller.GetProviders();
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var list = Assert.IsType<List<ProviderInfo>>(okResult.Value);
+        var list = Assert.IsType<List<string>>(okResult.Value);
         Assert.Empty(list);
     }
 
@@ -81,7 +76,7 @@ public class BenchmarkControllerTest
     {
         var entries = new List<BenchmarkEntry>
         {
-            new() { Provider = "OpenRouter", Success = true, LatencyMs = 100 }
+            new() { Provider = "OpenRouter", Model = "openrouter/free", Success = true, LatencyMs = 100 }
         };
 
         _benchmarkService
@@ -98,23 +93,24 @@ public class BenchmarkControllerTest
     }
 
     [Fact]
-    public async Task RunBenchmark_PassesProviderFilter()
+    public async Task RunBenchmark_PassesTargetFilter()
     {
         var entries = new List<BenchmarkEntry>
         {
-            new() { Provider = "OpenRouter", Success = true, LatencyMs = 50 }
+            new() { Provider = "OpenRouter", Model = "openrouter/free", Success = true, LatencyMs = 50 }
         };
 
         _benchmarkService
-            .Setup(s => s.RunBenchmarkAsync("hello", new[] { "OpenRouter" }, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RunBenchmarkAsync("hello", new[] { "OpenRouter__openrouter_free" }, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entries);
 
         var controller = CreateController();
-        var result = await controller.RunBenchmark("hello", ["OpenRouter"]);
+        var result = await controller.RunBenchmark("hello", ["OpenRouter__openrouter_free"]);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var list = Assert.IsType<List<BenchmarkEntry>>(okResult.Value);
         Assert.Single(list);
         Assert.Equal("OpenRouter", list[0].Provider);
+        Assert.Equal("openrouter/free", list[0].Model);
     }
 }

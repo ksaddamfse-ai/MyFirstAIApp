@@ -6,5 +6,5 @@ public class ProviderRegistryEntry
     public string Type { get; init; } = "OpenAI";
     public string? ApiKey { get; init; }
     public string BaseUrl { get; init; } = "";
-    public string ModelName { get; init; } = "";
+    public List<string> Models { get; init; } = [];
 }

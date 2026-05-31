@@ -17,13 +17,13 @@ public class BenchmarkController(IBenchmarkService benchmarkService) : Controlle
     [HttpPost]
     public async Task<IActionResult> RunBenchmark(
         [FromQuery] string question,
-        [FromQuery] string[]? providers = null,
+        [FromQuery] string[]? targets = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(question))
             return BadRequest("question is required");
 
-        var results = await benchmarkService.RunBenchmarkAsync(question, providers, cancellationToken);
+        var results = await benchmarkService.RunBenchmarkAsync(question, targets, cancellationToken);
         return Ok(results);
     }
 }

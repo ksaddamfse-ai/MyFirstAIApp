@@ -16,35 +16,43 @@ builder.Services.AddSwaggerGen(c => c.ParameterFilter<ProviderDropdownFilter>())
 // Config-driven provider registration with middleware pipeline
 foreach (var section in builder.Configuration.GetSection("ProviderRegistry").GetChildren())
 {
-    var key = section.Key;
+    var providerKey = section.Key;
     var type = section["Type"];
-    var modelName = section["ModelName"]!;
+    var models = section.GetSection("Models").Get<List<string>>() ?? [];
 
-    builder.Services.AddKeyedChatClient(key, serviceProvider =>
+    if (models.Count == 0)
+        continue;
+
+    foreach (var model in models)
     {
-        IChatClient client;
-        if (type == "Ollama")
-        {
-            client = new OllamaChatClient(section["BaseUrl"]!, modelName);
-        }
-        else
-        {
-            var apiKey = section["ApiKey"];
-            if (string.IsNullOrEmpty(apiKey))
-                return null!;
+        var key = $"{providerKey}__{model}";
 
-            client = new OpenAIClient(
-                new ApiKeyCredential(apiKey),
-                new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
-                .GetChatClient(modelName)
-                .AsIChatClient();
-        }
+        builder.Services.AddKeyedChatClient(key, serviceProvider =>
+        {
+            IChatClient client;
+            if (type == "Ollama")
+            {
+                client = new OllamaChatClient(section["BaseUrl"]!, model);
+            }
+            else
+            {
+                var apiKey = section["ApiKey"];
+                if (string.IsNullOrEmpty(apiKey))
+                    return null!;
 
-        return client.AsBuilder()
-            .UseLogging()
-            .UseOpenTelemetry()
-            .Build(serviceProvider);
-    });
+                client = new OpenAIClient(
+                    new ApiKeyCredential(apiKey),
+                    new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
+                    .GetChatClient(model)
+                    .AsIChatClient();
+            }
+
+            return client.AsBuilder()
+                .UseLogging()
+                .UseOpenTelemetry()
+                .Build(serviceProvider);
+        });
+    }
 }
 
 builder.Services.Configure<Dictionary<string, ProviderRegistryEntry>>(

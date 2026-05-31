@@ -24,22 +24,22 @@ public class BenchmarkServiceTest
                 Type = "OpenAI",
                 ApiKey = "sk-test",
                 BaseUrl = "https://openrouter.ai/api/v1",
-                ModelName = "openrouter/free"
+                Models = ["openrouter/free"]
             },
             ["Ollama"] = new()
             {
                 Enabled = ollamaEnabled,
                 Type = "Ollama",
                 BaseUrl = "http://localhost:11434",
-                ModelName = "llama3"
+                Models = ["llama3"]
             }
         };
     }
 
     private void SetupFactory()
     {
-        _factory.Setup(f => f.GetClient("OpenRouter")).Returns(_openRouterClient.Object);
-        _factory.Setup(f => f.GetClient("Ollama")).Returns(_ollamaClient.Object);
+        _factory.Setup(f => f.GetClient("OpenRouter", "openrouter/free")).Returns(_openRouterClient.Object);
+        _factory.Setup(f => f.GetClient("Ollama", "llama3")).Returns(_ollamaClient.Object);
     }
 
     private BenchmarkService CreateService(Dictionary<string, ProviderRegistryEntry>? registry = null)
@@ -59,8 +59,8 @@ public class BenchmarkServiceTest
         var result = service.GetAvailableProviders();
 
         Assert.Equal(2, result.Count);
-        Assert.Contains(result, p => p.Key == "OpenRouter");
-        Assert.Contains(result, p => p.Key == "Ollama");
+        Assert.Contains(result, p => p == "OpenRouter__openrouter/free");
+        Assert.Contains(result, p => p == "Ollama__llama3");
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class BenchmarkServiceTest
         var result = service.GetAvailableProviders();
 
         Assert.Single(result);
-        Assert.Equal("OpenRouter", result[0].Key);
+        Assert.Equal("OpenRouter__openrouter/free", result[0]);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class BenchmarkServiceTest
                 Type = "OpenAI",
                 ApiKey = "sk-test",
                 BaseUrl = "https://example.com",
-                ModelName = "test"
+                Models = ["test"]
             }
         };
         var factory = new Mock<IChatClientFactory>();
@@ -122,7 +122,7 @@ public class BenchmarkServiceTest
     }
 
     [Fact]
-    public async Task RunBenchmarkAsync_RunsSpecifiedProvidersOnly()
+    public async Task RunBenchmarkAsync_RunsSpecifiedTargetsOnly()
     {
         _openRouterClient
             .Setup(c => c.GetResponseAsync(
@@ -131,18 +131,19 @@ public class BenchmarkServiceTest
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "openrouter reply")));
 
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter"]);
+        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter__openrouter/free"]);
 
         Assert.Single(results);
         Assert.Equal("OpenRouter", results[0].Provider);
+        Assert.Equal("openrouter/free", results[0].Model);
         Assert.True(results[0].Success);
     }
 
     [Fact]
-    public async Task RunBenchmarkAsync_ReturnsErrorEntryForUnregisteredKey()
+    public async Task RunBenchmarkAsync_ReturnsErrorEntryForUnregisteredTarget()
     {
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["NonExistent"]);
+        var results = await service.RunBenchmarkAsync("hello", ["NonExistent__model"]);
 
         Assert.Single(results);
         Assert.False(results[0].Success);
@@ -159,11 +160,12 @@ public class BenchmarkServiceTest
             .ThrowsAsync(new HttpRequestException("API error"));
 
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter"]);
+        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter__openrouter/free"]);
 
         Assert.Single(results);
         Assert.False(results[0].Success);
         Assert.Equal("OpenRouter", results[0].Provider);
+        Assert.Equal("openrouter/free", results[0].Model);
         Assert.Contains("API error", results[0].Error);
     }
 }

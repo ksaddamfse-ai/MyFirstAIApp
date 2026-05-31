@@ -40,9 +40,9 @@ All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
 
 ## API Endpoints
 
-- `POST /api/chat?question=...&provider=...` — calls `IChatClient` (default: OpenRouter)
-- `GET  /api/benchmark/providers` — list available providers
-- `POST /api/benchmark?question=...&providers=...` — benchmark providers
+- `POST /api/chat?question=...&provider=...&model=...` — calls `IChatClient` (default: OpenRouter, openrouter/free)
+- `GET  /api/benchmark/providers` — list available `Provider__Model` targets
+- `POST /api/benchmark?question=...&targets=...` — benchmark targets
 
 ## Config
 

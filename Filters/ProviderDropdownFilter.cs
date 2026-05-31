@@ -1,31 +1,45 @@
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
-using MyFirstAIApp.Services;
+using MyFirstAIApp.Settings;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace MyFirstAIApp;
 
-public class ProviderDropdownFilter(IBenchmarkService benchmarkService) : IParameterFilter
+public class ProviderDropdownFilter(IOptions<Dictionary<string, ProviderRegistryEntry>> registry) : IParameterFilter
 {
     public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
     {
-        if (parameter.Name != "provider" && parameter.Name != "providers") return;
+        if (parameter.Name is not ("provider" or "model" or "targets")) return;
 
-        var keys = benchmarkService.GetAvailableProviders().Select(p => p.Key).ToList();
+        var entry = registry.Value;
 
-        if (parameter.Name == "providers")
+        if (parameter.Name == "provider")
         {
+            var providers = entry.Where(e => e.Value.Enabled).Select(e => e.Key).ToList();
+            parameter.Schema.Type = "string";
+            parameter.Schema.Enum = providers.Select(k => new OpenApiString(k)).Cast<IOpenApiAny>().ToList();
+        }
+        else if (parameter.Name == "model")
+        {
+            var models = entry.Where(e => e.Value.Enabled)
+                .SelectMany(e => e.Value.Models)
+                .Distinct()
+                .ToList();
+            parameter.Schema.Type = "string";
+            parameter.Schema.Enum = models.Select(m => new OpenApiString(m)).Cast<IOpenApiAny>().ToList();
+        }
+        else if (parameter.Name == "targets")
+        {
+            var targets = entry.Where(e => e.Value.Enabled)
+                .SelectMany(e => e.Value.Models.Select(m => $"{e.Key}__{m}"))
+                .ToList();
             parameter.Schema.Type = "array";
             parameter.Schema.Items = new OpenApiSchema
             {
                 Type = "string",
-                Enum = keys.Select(k => new OpenApiString(k)).Cast<IOpenApiAny>().ToList()
+                Enum = targets.Select(t => new OpenApiString(t)).Cast<IOpenApiAny>().ToList()
             };
-        }
-        else
-        {
-            parameter.Schema.Type = "string";
-            parameter.Schema.Enum = keys.Select(k => new OpenApiString(k)).Cast<IOpenApiAny>().ToList();
         }
     }
 }
