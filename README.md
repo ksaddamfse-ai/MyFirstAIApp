@@ -4,12 +4,6 @@
 
 **Unified AI provider abstraction for .NET** — swap between OpenRouter, Ollama, and Nvidia NIM by changing a config value. Zero code changes. Built on `Microsoft.Extensions.AI.IChatClient`.
 
-```
-docker run -p 8080:8080 \
-  -e ProviderRegistry__OpenRouter__ApiKey=sk-... \
-  myfirstaiapp
-```
-
 Providers: **OpenRouter**, **Ollama** (development only), **Nvidia NIM**.
 
 ## Why
@@ -27,7 +21,7 @@ This project shows a **config-driven** approach: drop a JSON block in `appsettin
 - **Swagger dropdown** — provider and model dropdowns auto-populated from the registry
 - **Chat API** — `POST /api/chat?provider=X&model=Y` with `IChatClient` pipeline (logging, OpenTelemetry, retry)
 - **Benchmark API** — compare latency across providers via JSON body with structured provider+model pairs
-- **Automatic retry** — `ClientRetryPolicy` (exponential backoff on 429/5xx) for all OpenAI-compatible providers
+- **Automatic retry** — `ClientRetryPolicy` (exponential backoff, max 3 retries) for all OpenAI-compatible providers
 - **Health endpoint** — `GET /health` returns `{ status: "healthy" }`
 - **OpenTelemetry** — tracing instrumentation for ASP.NET Core, HTTP client, and AI pipeline
 - **Secret scanning** — Gitleaks on push/PR to `main`
@@ -37,19 +31,9 @@ This project shows a **config-driven** approach: drop a JSON block in `appsettin
 
 ### Prerequisites
 
-- .NET 10 SDK or Docker
+- .NET 10 SDK
 - API key for OpenRouter and/or Nvidia NIM (optional — providers without a key are skipped)
 - [Ollama](https://ollama.ai) running locally (optional)
-
-### Run with Docker
-
-```bash
-docker build -t myfirstaiapp .
-docker run -p 8080:8080 \
-  -e ProviderRegistry__OpenRouter__ApiKey=sk-... \
-  -e ProviderRegistry__NvidiaNim__ApiKey=sk-... \
-  myfirstaiapp
-```
 
 ### Run with .NET CLI
 
@@ -64,13 +48,13 @@ dotnet run
 "ProviderRegistry": {
     "OpenRouter": {
         "Enabled": true, "Type": "OpenAI",
-        "ApiKey": "your-openrouter-api-key",
+        "ApiKey": "",
         "BaseUrl": "https://openrouter.ai/api/v1",
         "Models": ["openrouter/free", "google/gemma-4-31b-it:free"]
     },
     "NvidiaNim": {
         "Enabled": true, "Type": "OpenAI",
-        "ApiKey": "your-nvidia-nim-api-key",
+        "ApiKey": "",
         "BaseUrl": "https://integrate.api.nvidia.com/v1",
         "Models": ["meta/llama-3.3-70b-instruct"]
     }
@@ -129,12 +113,16 @@ curl -X POST http://localhost:5184/api/benchmark \
 MyFirstAIApp/
 ├── Controllers/        # ChatController, BenchmarkController
 ├── Services/           # IBenchmarkService / BenchmarkService, IChatClientFactory / ChatClientFactory
-├── Models/             # BenchmarkEntry, BenchmarkRequest, ProviderTarget, ProviderModels, ResolveClientResult
+├── Models/             # BenchmarkEntry, BenchmarkRequest (incl. ProviderTarget), ProviderModels, ResolveClientResult
 ├── Settings/           # ProviderRegistryEntry (maps appsettings.json)
 ├── Filters/            # ProviderDropdownFilter (Swagger dropdown for provider, model)
 ├── Tests/              # xunit + Moq (23 tests across services and controllers)
+├── .github/workflows/  # CI + Gitleaks workflows
+├── Properties/         # launchSettings.json
+├── docs/               # Documentation and specs
 ├── Program.cs          # Config-driven provider registration loop + pipeline
-├── Dockerfile          # Multi-stage build
+├── MyFirstAIApp.sln
+├── MyFirstAIApp.http   # API endpoint test snippets
 └── appsettings*.json   # ProviderRegistry config
 ```
 

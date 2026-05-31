@@ -9,18 +9,18 @@ dotnet build
 dotnet run
 ```
 
-App listens on `https://localhost:5001` and `http://localhost:5000`. Swagger at `/swagger`.
+App listens on `https://localhost:7164` and `http://localhost:5184`. Swagger at `/swagger`.
 
 ## Test
 
-No tests exist. If adding tests, place them in a `Tests/` folder at repo root with a `xunit` project referencing `MyFirstAIApp.csproj`.
+23 xunit tests (17 unit + 6 integration) in `Tests/` folder at repo root.
 
 ## Project Structure
 
 ```
 Controllers/        # API endpoints (ChatController.cs, BenchmarkController.cs)
 Services/           # IBenchmarkService / BenchmarkService
-Models/             # ProviderInfo, BenchmarkEntry
+Models/             # ProviderModels, BenchmarkEntry, BenchmarkRequest
 Settings/           # ProviderRegistryEntry
 Filters/            # ProviderDropdownFilter.cs (Swagger dropdown)
 Program.cs          # DI registration of AI providers and pipeline
@@ -30,19 +30,19 @@ appsettings.Development.json  # ProviderRegistry (local-only providers)
 
 ## AI Providers (DI)
 
-| Keyed Service Name     | Provider      | How                        |
-|------------------------|---------------|----------------------------|
-| `OpenRouter`     | OpenRouter    | `OpenAIClient` SDK via MEAI |
-| `Ollama`               | Ollama        | `OllamaChatClient`          |
-| `NvidiaNim`      | Nvidia NIM    | `OpenAIClient` SDK via MEAI |
+Each `Provider__Model` combo registered as keyed `IChatClient`. Consumption via `[FromKeyedServices("Provider__Model")]`.
 
-All registered as `IChatClient`. Consumption via `[FromKeyedServices("name")]`.
+| Keyed Service Example | Provider | How |
+|---|---|---|
+| `OpenRouter__openrouter/free` | OpenRouter | `OpenAIClient` SDK via MEAI |
+| `Ollama__llama3` | Ollama | `OllamaChatClient` |
+| `NvidiaNim__meta/llama-3.3-70b-instruct` | Nvidia NIM | `OpenAIClient` SDK via MEAI |
 
 ## API Endpoints
 
 - `POST /api/chat?question=...&provider=...&model=...` — calls `IChatClient` (default: OpenRouter, openrouter/free)
 - `GET  /api/benchmark/providers` — list available `Provider__Model` targets
-- `POST /api/benchmark?question=...&targets=...` — benchmark targets
+- `POST /api/benchmark` — benchmark targets (JSON body with `{ question, targets? }`)
 
 ## Config
 
@@ -53,7 +53,7 @@ Edit `appsettings.json`:
         "Enabled": true, "Type": "OpenAI",
         "ApiKey": "your-key",
         "BaseUrl": "https://openrouter.ai/api/v1",
-        "ModelName": "openrouter/free"
+        "Models": ["openrouter/free", "google/gemma-4-31b-it:free"]
     }
 }
 ```
