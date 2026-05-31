@@ -13,7 +13,7 @@ public class BenchmarkControllerTest
 
     public BenchmarkControllerTest()
     {
-        _providers = ["OpenRouter__openrouter_free", "Ollama__llama3"];
+        _providers = ["OpenRouter__openrouter/free", "Ollama__llama3"];
     }
 
     private BenchmarkController CreateController()
@@ -55,7 +55,7 @@ public class BenchmarkControllerTest
     public async Task RunBenchmark_ReturnsBadRequest_WhenQuestionEmpty()
     {
         var controller = CreateController();
-        var result = await controller.RunBenchmark("");
+        var result = await controller.RunBenchmark(new BenchmarkRequest());
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Contains("question", badRequest.Value?.ToString());
@@ -65,7 +65,7 @@ public class BenchmarkControllerTest
     public async Task RunBenchmark_ReturnsBadRequest_WhenQuestionWhitespace()
     {
         var controller = CreateController();
-        var result = await controller.RunBenchmark("   ");
+        var result = await controller.RunBenchmark(new BenchmarkRequest { Question = "   " });
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Contains("question", badRequest.Value?.ToString());
@@ -84,7 +84,7 @@ public class BenchmarkControllerTest
             .ReturnsAsync(entries);
 
         var controller = CreateController();
-        var result = await controller.RunBenchmark("hello");
+        var result = await controller.RunBenchmark(new BenchmarkRequest { Question = "hello" });
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var list = Assert.IsType<List<BenchmarkEntry>>(okResult.Value);
@@ -100,12 +100,20 @@ public class BenchmarkControllerTest
             new() { Provider = "OpenRouter", Model = "openrouter/free", Success = true, LatencyMs = 50 }
         };
 
+        var request = new BenchmarkRequest
+        {
+            Question = "hello",
+            Targets = [new ProviderTarget { Provider = "OpenRouter", Model = "openrouter/free" }]
+        };
+
         _benchmarkService
-            .Setup(s => s.RunBenchmarkAsync("hello", new[] { "OpenRouter__openrouter_free" }, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RunBenchmarkAsync("hello",
+                It.Is<List<ProviderTarget>>(t => t.Count == 1 && t[0].Provider == "OpenRouter"),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(entries);
 
         var controller = CreateController();
-        var result = await controller.RunBenchmark("hello", ["OpenRouter__openrouter_free"]);
+        var result = await controller.RunBenchmark(request);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var list = Assert.IsType<List<BenchmarkEntry>>(okResult.Value);

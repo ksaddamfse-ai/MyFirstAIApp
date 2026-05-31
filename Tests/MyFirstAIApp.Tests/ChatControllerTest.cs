@@ -38,7 +38,7 @@ public class ChatControllerTest
         };
 
         _factory
-            .Setup(f => f.GetClient("OpenRouter", "openrouter/free"))
+            .Setup(f => f.GetClient("OpenRouter__openrouter/free"))
             .Returns(_chatClient.Object);
     }
 

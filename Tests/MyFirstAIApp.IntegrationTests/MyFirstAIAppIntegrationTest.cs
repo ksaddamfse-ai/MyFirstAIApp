@@ -1,10 +1,12 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using MyFirstAIApp.Models;
 using MyFirstAIApp.Services;
 
 namespace MyFirstAIApp.IntegrationTests;
@@ -25,7 +27,7 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "mocked response")));
 
         _mockFactory
-            .Setup(f => f.GetClient(It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(f => f.GetClient(It.IsAny<string>()))
             .Returns(_mockClient.Object);
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
@@ -77,7 +79,10 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
     public async Task Benchmark_ReturnsBadRequest_WhenQuestionMissing()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsync("/api/benchmark", null);
+        var request = new BenchmarkRequest();
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/benchmark", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -98,7 +103,17 @@ public class MyFirstAIAppIntegrationTest : IClassFixture<WebApplicationFactory<P
     public async Task Benchmark_ReturnsMockedResults()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsync("/api/benchmark?question=Hi&targets=MockProvider__mock-model", null);
+        var request = new BenchmarkRequest
+        {
+            Question = "Hi",
+            Targets =
+            [
+                new ProviderTarget { Provider = "MockProvider", Model = "mock-model" }
+            ]
+        };
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/benchmark", content);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 

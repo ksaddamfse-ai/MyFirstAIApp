@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using MyFirstAIApp.Models;
 using MyFirstAIApp.Services;
 
 namespace MyFirstAIApp.Controllers;
@@ -16,14 +17,13 @@ public class BenchmarkController(IBenchmarkService benchmarkService) : Controlle
 
     [HttpPost]
     public async Task<IActionResult> RunBenchmark(
-        [FromQuery] string question,
-        [FromQuery] string[]? targets = null,
+        [FromBody] BenchmarkRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(question))
+        if (string.IsNullOrWhiteSpace(request.Question))
             return BadRequest("question is required");
 
-        var results = await benchmarkService.RunBenchmarkAsync(question, targets, cancellationToken);
+        var results = await benchmarkService.RunBenchmarkAsync(request.Question, request.Targets, cancellationToken);
         return Ok(results);
     }
 }

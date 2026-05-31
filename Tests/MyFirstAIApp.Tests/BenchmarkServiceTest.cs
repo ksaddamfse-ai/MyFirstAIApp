@@ -38,8 +38,8 @@ public class BenchmarkServiceTest
 
     private void SetupFactory()
     {
-        _factory.Setup(f => f.GetClient("OpenRouter", "openrouter/free")).Returns(_openRouterClient.Object);
-        _factory.Setup(f => f.GetClient("Ollama", "llama3")).Returns(_ollamaClient.Object);
+        _factory.Setup(f => f.GetClient("OpenRouter__openrouter/free")).Returns(_openRouterClient.Object);
+        _factory.Setup(f => f.GetClient("Ollama__llama3")).Returns(_ollamaClient.Object);
     }
 
     private BenchmarkService CreateService(Dictionary<string, ProviderRegistryEntry>? registry = null)
@@ -131,7 +131,8 @@ public class BenchmarkServiceTest
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "openrouter reply")));
 
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter__openrouter/free"]);
+        var results = await service.RunBenchmarkAsync("hello",
+            [new ProviderTarget { Provider = "OpenRouter", Model = "openrouter/free" }]);
 
         Assert.Single(results);
         Assert.Equal("OpenRouter", results[0].Provider);
@@ -143,7 +144,8 @@ public class BenchmarkServiceTest
     public async Task RunBenchmarkAsync_ReturnsErrorEntryForUnregisteredTarget()
     {
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["NonExistent__model"]);
+        var results = await service.RunBenchmarkAsync("hello",
+            [new ProviderTarget { Provider = "NonExistent", Model = "model" }]);
 
         Assert.Single(results);
         Assert.False(results[0].Success);
@@ -160,7 +162,8 @@ public class BenchmarkServiceTest
             .ThrowsAsync(new HttpRequestException("API error"));
 
         var service = CreateService();
-        var results = await service.RunBenchmarkAsync("hello", ["OpenRouter__openrouter/free"]);
+        var results = await service.RunBenchmarkAsync("hello",
+            [new ProviderTarget { Provider = "OpenRouter", Model = "openrouter/free" }]);
 
         Assert.Single(results);
         Assert.False(results[0].Success);

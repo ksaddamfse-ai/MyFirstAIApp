@@ -10,7 +10,7 @@ public class ProviderDropdownFilter(IOptions<Dictionary<string, ProviderRegistry
 {
     public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
     {
-        if (parameter.Name is not ("provider" or "model" or "targets")) return;
+        if (parameter.Name is not ("provider" or "model")) return;
 
         var entry = registry.Value;
 
@@ -29,17 +29,6 @@ public class ProviderDropdownFilter(IOptions<Dictionary<string, ProviderRegistry
             parameter.Schema.Type = "string";
             parameter.Schema.Enum = models.Select(m => new OpenApiString(m)).Cast<IOpenApiAny>().ToList();
         }
-        else if (parameter.Name == "targets")
-        {
-            var targets = entry.Where(e => e.Value.Enabled)
-                .SelectMany(e => e.Value.Models.Select(m => $"{e.Key}__{m}"))
-                .ToList();
-            parameter.Schema.Type = "array";
-            parameter.Schema.Items = new OpenApiSchema
-            {
-                Type = "string",
-                Enum = targets.Select(t => new OpenApiString(t)).Cast<IOpenApiAny>().ToList()
-            };
-        }
+
     }
 }

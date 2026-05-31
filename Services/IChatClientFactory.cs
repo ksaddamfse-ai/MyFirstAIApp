@@ -4,5 +4,5 @@ namespace MyFirstAIApp.Services;
 
 public interface IChatClientFactory
 {
-    IChatClient? GetClient(string provider, string model);
+    IChatClient? GetClient(string key);
 }

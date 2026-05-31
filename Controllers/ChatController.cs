@@ -37,6 +37,6 @@ public class ChatController(
         if (!entry.Models.Contains(model))
             return null;
 
-        return clientFactory.GetClient(provider, model);
+        return clientFactory.GetClient($"{provider}__{model}");
     }
 }

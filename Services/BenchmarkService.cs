@@ -33,7 +33,7 @@ public class BenchmarkService : IBenchmarkService
             foreach (var model in entry.Models)
             {
                 var target = $"{key}__{model}";
-                var client = _clientFactory.GetClient(key, model);
+                var client = _clientFactory.GetClient(target);
                 if (client is not null)
                     providers.Add(target);
             }
@@ -42,11 +42,11 @@ public class BenchmarkService : IBenchmarkService
         return providers;
     }
 
-    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, string[]? targets, CancellationToken cancellationToken = default)
+    public async Task<List<BenchmarkEntry>> RunBenchmarkAsync(string question, List<ProviderTarget>? targets, CancellationToken cancellationToken = default)
     {
         IEnumerable<string> keys;
-        if (targets is { Length: > 0 })
-            keys = targets;
+        if (targets is { Count: > 0 })
+            keys = targets.Select(t => $"{t.Provider}__{t.Model}");
         else
             keys = GetAvailableProviders();
 
@@ -70,7 +70,7 @@ public class BenchmarkService : IBenchmarkService
         }
 
         var (provider, model) = (parts[0], parts[1]);
-        var client = _clientFactory.GetClient(provider, model);
+        var client = _clientFactory.GetClient(target);
         if (client is null)
         {
             _logger.LogWarning("Provider {Provider} model {Model} not registered, skipping", provider, model);
