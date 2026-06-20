@@ -1,3 +1,5 @@
+using Anthropic;
+using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using MyFirstAIApp;
 using MyFirstAIApp.Settings;
@@ -5,7 +7,6 @@ using MyFirstAIApp.Services;
 using OpenAI;
 using OpenTelemetry.Trace;
 using System.ClientModel;
-using System.ClientModel.Primitives;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +18,10 @@ builder.Services.AddSwaggerGen(c =>
     c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "MyFirstAIApp.xml"), includeControllerXmlComments: true);
 });
 
-// Config-driven provider registration with middleware pipeline
 foreach (var section in builder.Configuration.GetSection("ProviderRegistry").GetChildren())
 {
     var providerKey = section.Key;
-    var type = section["Type"];
+    var providerType = section["Type"] ?? "OpenAI";
     var models = section.GetSection("Models").Get<List<string>>() ?? [];
 
     if (models.Count == 0)
@@ -29,30 +29,32 @@ foreach (var section in builder.Configuration.GetSection("ProviderRegistry").Get
 
     foreach (var model in models)
     {
-        var key = $"{providerKey}__{model}";
-
-        if (type != "Ollama" && string.IsNullOrEmpty(section["ApiKey"]))
+        if (providerType != "AzureOpenAI"
+            && string.IsNullOrEmpty(section["ApiKey"])
+            && section["BaseUrl"]?.Contains("localhost") != true)
             continue;
+
+        var key = $"{providerKey}__{model}";
 
         builder.Services.AddKeyedChatClient(key, serviceProvider =>
         {
-            IChatClient client;
-            if (type == "Ollama")
+            var client = providerType switch
             {
-                client = new OllamaChatClient(section["BaseUrl"]!, model);
-            }
-            else
-            {
-                client = new OpenAIClient(
-                    new ApiKeyCredential(section["ApiKey"]!),
-                    new OpenAIClientOptions
-                    {
-                        Endpoint = new Uri(section["BaseUrl"]!),
-                        RetryPolicy = new ClientRetryPolicy(maxRetries: 3)
-                    })
+                "AzureOpenAI" => new AzureOpenAIClient(
+                    new Uri(section["Endpoint"]!),
+                    new ApiKeyCredential(section["ApiKey"]!))
                     .GetChatClient(model)
-                    .AsIChatClient();
-            }
+                    .AsIChatClient(),
+
+                "Anthropic" => new AnthropicClient { ApiKey = section["ApiKey"]! }
+                    .AsIChatClient(model),
+
+                _ => new OpenAIClient(
+                    new ApiKeyCredential(section["ApiKey"] ?? "not-needed"),
+                    new OpenAIClientOptions { Endpoint = new Uri(section["BaseUrl"]!) })
+                    .GetChatClient(model)
+                    .AsIChatClient()
+            };
 
             return client.AsBuilder()
                 .UseLogging()
@@ -67,7 +69,6 @@ builder.Services.Configure<Dictionary<string, ProviderRegistryEntry>>(
 builder.Services.AddSingleton<IChatClientFactory, ChatClientFactory>();
 builder.Services.AddTransient<IBenchmarkService, BenchmarkService>();
 
-// OpenTelemetry: traces for ASP.NET Core and HTTP
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
